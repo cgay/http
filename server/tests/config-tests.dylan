@@ -1,4 +1,4 @@
-Module: koala-test-suite
+Module: http-server-test-suite
 Copyright: See LICENSE in this distribution for details.
 
 
@@ -20,7 +20,7 @@ define function koala-document
 end;
 
 // Try to configure a server with the given document (a string containing
-// a Koala XML configuration description).  
+// an XML configuration description).  
 define function configure
     (configuration :: <string>)
  => (server :: <http-server>)

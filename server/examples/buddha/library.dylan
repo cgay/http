@@ -4,7 +4,7 @@ author: Hannes Mehnert <hannes@mehnert.org>
 define library buddha
   use common-dylan;
   use io;
-  use koala, import: { koala };
+  use http-server, import: { http-server };
   use dsp;
   use dood;
   use strings;
@@ -44,7 +44,7 @@ define module buddha
   use strings, import: { hexadecimal-digit? };
   use date;
 
-  use koala, exclude: { print-object };
+  use http-server, exclude: { print-object };
   use dsp, import: { set-attribute, get-attribute };
   use sockets, import: { <tcp-socket>,
                          <internet-address> };

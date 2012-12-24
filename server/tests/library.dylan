@@ -1,10 +1,10 @@
 Module:   dylan-user
 Author:   Carl Gay
 Copyright: See LICENSE in this distribution for details.
-Synopsis: Koala test suite
+Synopsis: HTTP server test suite
 
 
-define library koala-test-suite
+define library http-server-test-suite
   use collection-extensions,
     import: { collection-utilities };
   use common-dylan,
@@ -14,8 +14,8 @@ define library koala-test-suite
   use http-common-test-suite;
   use io,
     import: { format-out, standard-io, streams };
-  use koala,
-    import: { koala, koala-unit };
+  use http-server,
+    import: { http-server, http-server-unit };
   use logging;
   use mime;
   use network,
@@ -36,9 +36,9 @@ define library koala-test-suite
   use xml-rpc-server;
 
   export koala-test-suite;
-end library koala-test-suite;
+end library http-server-test-suite;
 
-define module koala-test-suite
+define module http-server-test-suite
   use collection-utilities,
     import: { key-exists? };
   use common-dylan;
@@ -49,9 +49,9 @@ define module koala-test-suite
   use http-common;
   use http-common-internals;
   use http-common-test-suite;
-  use koala,
+  use http-server,
     exclude: { log-trace, log-debug, log-info, log-warning, log-error };
-  use koala-unit;
+  use http-server-unit;
   use locators,
     exclude: { <http-server>, <url> };
   use logging;
@@ -80,5 +80,5 @@ define module koala-test-suite
   use xml-rpc-server;
 
   export koala-test-suite;
-end module koala-test-suite;
+end module http-server-test-suite;
 

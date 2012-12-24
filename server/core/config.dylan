@@ -1,5 +1,5 @@
 Module:    httpi
-Synopsis:  For processing the configuration init file, koala-config.xml
+Synopsis:  Process the configuration file
 Author:    Carl Gay
 Copyright: See LICENSE in this distribution for details.
 
@@ -7,7 +7,7 @@ Copyright: See LICENSE in this distribution for details.
 /*
  * TODO: warn() should note whether it has been called (perhaps with a
  *       fatal? flag) and then after the entire config has been processed
- *       Koala should exit if there were errors.  It's a good way to debug
+ *       the server should exit if there were errors.  It's a good way to debug
  *       the config file.  Many of the current warnings should be fatal.
  *
  * TODO: Should warn when unrecognized attributes are used.
@@ -44,10 +44,10 @@ end;
 // API
 // Process the server config file, config.xml.
 // Assume a user directory structure like:
-// koala/
-// koala/bin               // server executable and dlls
-// koala/www               // default web document root
-// koala/config            // koala-config.xml etc
+// http-server/
+// http-server/bin               // server executable and dlls
+// http-server/www               // default web document root
+// http-server/config            // config.xml etc
 define method configure-server
     (server :: <http-server>, config-file :: false-or(<string>))
   let defaults
@@ -150,7 +150,7 @@ end;
 
 
 
-//// koala-config.xml elements.  One method for each element name.
+//// config.xml elements.  One method for each element name.
 
 define method process-config-element
     (server :: <http-server>, node :: xml$<element>, name == #"koala")

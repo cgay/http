@@ -1,8 +1,8 @@
 Module:   dylan-user
-Synopsis: Koala example code
+Synopsis: HTTP server example code
 Author:   Carl Gay
 
-define library koala-demo
+define library http-server-demo
   use common-dylan,
     import: { common-extensions };
   use dsp;
@@ -10,21 +10,21 @@ define library koala-demo
   use http-common;
   use io,
     import: { format, streams };
-  use koala;
+  use http-server;
   use system,
     import: { locators, threads };
   use xml-rpc-server;
 end;
 
 
-define module koala-demo
+define module http-server-demo
   use common-extensions,
     exclude: { format-to-string };
   use dsp;
   use dylan;
   use format;
   use http-common;
-  use koala;
+  use http-server;
   use locators,
     exclude: { <http-server> };  // badly named
   use streams;

@@ -1,4 +1,4 @@
-Module: koala-test-suite
+Module: http-server-test-suite
 Copyright: See LICENSE in this distribution for details.
 
 
@@ -153,6 +153,7 @@ define suite http-server-test-suite ()
 end;
 
 // exported
+todo
 define suite koala-test-suite
     (setup-function: start-sockets)
   suite http-server-test-suite;
@@ -165,13 +166,13 @@ end suite koala-test-suite;
 //
 define method main () => ()
   let filename = locator-name(as(<file-locator>, application-name()));
-  if (split(filename, ".")[0] = "koala-test-suite")
+  if (split(filename, ".")[0] = "http-server-test-suite")
     let query = environment-variable("QUERY_STRING");
     if (~query)
       // Show all request/response headers and message content.
       *http-common-log*.log-level := $trace-level;
       *http-client-log*.log-level := $trace-level;
-      *log-content?* := #f;  // koala variable, not yet configurable.
+      *log-content?* := #f;  // http-server variable, not yet configurable.
       run-test-application(koala-test-suite);
     else
       // We're being invoked as a CGI script.
