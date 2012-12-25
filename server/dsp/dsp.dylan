@@ -108,6 +108,8 @@ define class <taglib> (<object>)
     init-function: curry(make, <string-table>);
 end class <taglib>;
 
+//ignorable(default-prefix-setter);  // supress warning. used in a macro, below.
+
 // Make the prefix default to the taglib name.
 //
 define method make

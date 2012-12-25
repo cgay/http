@@ -159,7 +159,7 @@ define module http-server
 
   // Errors
   create
-    <koala-api-error>,
+    <http-server-api-error>,
     <configuration-error>;
 
   // Rewrite rules

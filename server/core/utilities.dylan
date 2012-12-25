@@ -138,12 +138,12 @@ end;
 // errors such as registering a page that has already been registered.
 // Not for errors that will be reported to the HTTP client.
 //
-define open class <koala-api-error> (<koala-error>)
+define open class <http-server-api-error> (<koala-error>)
 end;
 
-define function koala-api-error
+define function http-server-api-error
     (format-string :: <string>, #rest format-arguments)
-  signal(make(<koala-api-error>,
+  signal(make(<http-server-api-error>,
               format-string: format-string,
               format-arguments: format-arguments));
 end;

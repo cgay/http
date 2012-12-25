@@ -23,7 +23,7 @@ define thread variable %server = #f;
 // Holds the current vhost while config elements are being processed.
 define thread variable %vhost = #f;
 
-define class <configuration-error> (<koala-api-error>)
+define class <configuration-error> (<http-server-api-error>)
 end;
 
 define function config-error

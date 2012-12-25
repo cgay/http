@@ -174,7 +174,7 @@ define method add-virtual-host
  => ()
   let name = as-lowercase(fqdn);
   if (element(server.virtual-hosts, fqdn, default: #f))
-    koala-api-error("Attempt to add a virtual host named %= to %= but "
+    http-server-api-error("Attempt to add a virtual host named %= to %= but "
                     "a virtual host by that name already exists.",
                     name, server);
   else
@@ -265,7 +265,7 @@ define method make-listener
 end;
 
 // #(host, port)
- define method make-listener
+define method make-listener
     (host-and-port :: <sequence>) => (listener :: <listener>)
   if (host-and-port.size = 2)
     let (host, port) = apply(values, host-and-port);
@@ -274,11 +274,11 @@ end;
     end;
     make(<listener>, host: host, port: port)
   else
-    error(make(<koala-api-error>,
+    error(make(<http-server-api-error>,
                format-string: "Invalid listener spec: %s",
                format-arguments: list(host-and-port)));
   end
- end method make-listener;
+end method make-listener;
 
 // "host:port"
 define method make-listener
