@@ -100,7 +100,7 @@ end;
 define class <taglib> (<object>)
   constant slot name :: <string>,
     required-init-keyword: name:;
-  constant slot default-prefix :: <string>,
+  slot default-prefix :: <string>,
     init-keyword: prefix:;
   constant slot tag-map :: <string-table>,
     init-function: curry(make, <string-table>);
@@ -108,7 +108,8 @@ define class <taglib> (<object>)
     init-function: curry(make, <string-table>);
 end class <taglib>;
 
-//ignorable(default-prefix-setter);  // supress warning. used in a macro, below.
+// Only used by macro call, which isn't used in this library but is exported.  (Bug.)
+ignore(default-prefix-setter);
 
 // Make the prefix default to the taglib name.
 //

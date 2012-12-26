@@ -10,13 +10,13 @@ define function config-document
     (content :: <string>, #key listener?)
  => (doc :: <string>)
   concatenate($xml-header,
-              "<koala>\n",
+              "<http-server>\n",
               iff(listener?,
                   fmt("<listener address=\"%s\" port=\"%s\" />\n",
                       *test-host*, *test-port*),
                   ""),
               content,
-              "\n</koala>\n")
+              "\n</http-server>\n")
 end;
 
 // Try to configure a server with the given document (a string containing
@@ -32,14 +32,14 @@ end function configure;
 define test basic-config-test ()
   let texts = #("",
                 "<barbaloot>",
-                "<koala>gubbish</koala>",
+                "<http-server>gubbish</http-server>",
                 "&!*#)!^%");
   for (text in texts)
     check-condition(fmt("Invalid config (%=) causes <configuration-error>", text),
                     <configuration-error>,
                     configure(text));
   end for;
-  check-no-errors("Empty <koala> element",
+  check-no-errors("Empty <http-server> element",
                   configure(config-document("")));
   check-no-errors("Unknown element ignored",
                   configure(config-document("<unknown></unknown>")));

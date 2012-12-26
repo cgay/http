@@ -131,14 +131,14 @@ end;
 
 //// Errors
 
-define class <koala-error> (<format-string-condition>, <error>)
+define class <http-server-error> (<format-string-condition>, <error>)
 end;
 
 // Signaled when a library uses the server API incorrectly. i.e., user
 // errors such as registering a page that has already been registered.
 // Not for errors that will be reported to the HTTP client.
 //
-define open class <http-server-api-error> (<koala-error>)
+define open class <http-server-api-error> (<http-server-error>)
 end;
 
 define function http-server-api-error

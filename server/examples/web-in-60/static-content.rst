@@ -93,9 +93,9 @@ looks like this::
 Run this example and point your browser at `http://127.0.0.1:8888/
 <http://127.0.0.1:8888/>`_.
 
-Note that serving static content is one of the things built into koala
-itself, so if that's all you want to do this will accomplish the same
-thing::
+Note that serving static content is one of the things built into the
+http-server library itself, so if that's all you want to do this will
+accomplish the same thing::
 
     http-server --listen 0.0.0.0:8888 --directory /tmp
 

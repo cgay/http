@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 
-<koala>
+<http-server>
 
 <!-- Dylan HTTP server configuration file
 
      Pass this file to the http-server executable with the "config"
      command-line option.
 
-     Anything directly inside the <koala> element in this file affects
+     Anything directly inside the <http-server> element in this file affects
      the server's global environment or the default virtual host.  Anything
      inside a <virtual-host> element applies only to that virtual
      host.
@@ -174,4 +174,4 @@
      wiki pages, user database, etc to be stored. -->
 <web-framework content-directory="www/wiki" />
 
-</koala>
+</http-server>

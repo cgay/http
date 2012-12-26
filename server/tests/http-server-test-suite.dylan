@@ -152,14 +152,6 @@ define suite http-server-test-suite ()
   suite virtual-host-test-suite;
 end;
 
-// exported
-todo
-define suite koala-test-suite
-    (setup-function: start-sockets)
-  suite http-server-test-suite;
-  suite http-client-test-suite;
-end suite koala-test-suite;
-
 // This library may be used as a dll or as an executable.  If an executable,
 // it does different things depending on the environment so that it can be
 // invoked as a CGI script.
@@ -173,7 +165,7 @@ define method main () => ()
       *http-common-log*.log-level := $trace-level;
       *http-client-log*.log-level := $trace-level;
       *log-content?* := #f;  // http-server variable, not yet configurable.
-      run-test-application(koala-test-suite);
+      run-test-application(http-server-test-suite);
     else
       // We're being invoked as a CGI script.
       // Note: don't log anything in this branch since it will become

@@ -35,7 +35,7 @@ define library http-server-test-suite
   use xml-rpc-client;
   use xml-rpc-server;
 
-  export koala-test-suite;
+  export http-server-test-suite;
 end library http-server-test-suite;
 
 define module http-server-test-suite
@@ -79,6 +79,6 @@ define module http-server-test-suite
   use xml-rpc-client;
   use xml-rpc-server;
 
-  export koala-test-suite;
+  export http-server-test-suite;
 end module http-server-test-suite;
 
