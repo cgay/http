@@ -9,29 +9,13 @@ define class <basic-request> (<object>)
     required-init-keyword: client:;
 end;
 
+// TODO(cgay): Can this be changed to request-stream and return a
+// stream, to make non-TCP mocking possible?
 define inline function request-socket
     (request :: <basic-request>)
  => (socket :: <tcp-socket>)
   request.request-client.client-socket
 end;
-
-define inline function request-server
-    (request :: <basic-request>)
- => (server :: <http-server>)
-  request.request-client.client-server
-end;
-
-/*
-define inline function request-thread (request :: <basic-request>)
-    => (server :: <thread>)
-  request.request-client.client-thread
-end;
-
-define inline function request-port (request :: <basic-request>)
-    => (port :: <integer>)
-  request.request-client.client-listener.listener-port;
-end;
-*/
 
 
 define open primary class <request>
@@ -97,9 +81,8 @@ end method request-absolute-url;
 // errors therein.
 //---TODO: have overall timeout for header reading.
 define method read-request
-    (request :: <request>) => ()
+    (server :: <http-server>, request :: <request>) => ()
   let socket = request.request-socket;
-  let server = request.request-server;
   let (buffer, len) = read-http-line(socket);
 
   // RFC 2616, 4.1 - "Servers SHOULD ignore an empty line(s) received where a

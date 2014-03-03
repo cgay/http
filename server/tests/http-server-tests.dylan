@@ -1,6 +1,15 @@
 Module: http-server-test-suite
 Copyright: See LICENSE in this distribution for details.
 
+define test test-mock-server ()
+  let server = make-mock-server();
+  assert-no-errors(start-server(server));
+  assert-no-errors(stop-server(server));
+end test test-mock-server;
+
+define suite mock-server-test-suite ()
+  test test-mock-server;
+end;
 
 define function connect-and-close
     (addr, #key port = *test-port*)
@@ -71,6 +80,7 @@ define test test-repeated-start-stop-with-connection ()
   end;
 end test test-repeated-start-stop-with-connection;
 
+// This fails on OS X with <unix-socket-error> rather than <address-in-use>.
 define test conflicting-listener-ips-test ()
   let server = make-server(listeners: list($listener-127, $listener-127));
   block ()
@@ -142,6 +152,7 @@ define suite chunking-test-suite ()
 end;
 
 define suite http-server-test-suite ()
+  suite mock-server-test-suite;
   suite start-stop-test-suite;
   suite chunking-test-suite;
   suite configuration-test-suite;

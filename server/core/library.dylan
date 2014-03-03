@@ -175,6 +175,7 @@ define module http-server-unit
     *server*,
     configure-from-string,
     find-multi-view-file,
+    handle-request,
     media-type-from-header,
     parse-path-variable,
     resource-parent,

@@ -232,26 +232,25 @@ end;
 
 
 define function release-client
-    (client :: <client>)
-  let server = client.client-server;
+    (server :: <http-server>, client :: <client>)
   with-lock (server.server-lock)
     remove!(server.server-clients, client);
     when (empty?(server.server-clients))
       release-all(server.clients-shutdown-notification);
     end;
   end;
-end release-client;
+end function release-client;
 
-define class <listener> (<object>)
+// Is the benefit of providing listeners on multiple ports inside a single
+// server worth the complexity?  What's the use case that can't be solved via
+// port forwarding?
+//
+define abstract class <listener> (<object>)
   constant slot listener-port :: <integer>,
     required-init-keyword: port:;
 
   constant slot listener-host :: false-or(<string>),
     required-init-keyword: host:;
-
-  slot listener-socket :: false-or(<server-socket>),
-    init-value: #f,
-    init-keyword: socket:;
 
   slot listener-thread :: <thread> = #f;
 
@@ -260,8 +259,14 @@ define class <listener> (<object>)
   // Statistics
   slot connections-accepted :: <integer> = 0;
   slot total-restarts :: <integer> = 0;             // Listener restarts
-
 end class <listener>;
+
+
+define class <tcp-listener> (<listener>)
+  slot listener-socket :: false-or(<tcp-server-socket>) = #f,
+    init-keyword: socket:;
+end;
+
 
 define method make-listener
     (listener :: <listener>) => (listener :: <listener>)
@@ -270,13 +275,13 @@ end;
 
 // #(host, port)
 define method make-listener
-    (host-and-port :: <sequence>) => (listener :: <listener>)
+    (host-and-port :: <sequence>) => (listener :: <tcp-listener>)
   if (host-and-port.size = 2)
     let (host, port) = apply(values, host-and-port);
     if (instance?(port, <string>))
       port := string-to-integer(port);
     end;
-    make(<listener>, host: host, port: port)
+    make(<tcp-listener>, host: host, port: port)
   else
     error(make(<http-server-api-error>,
                format-string: "Invalid listener spec: %s",
@@ -286,7 +291,7 @@ end method make-listener;
 
 // "host:port"
 define method make-listener
-    (listener :: <string>) => (listener :: <listener>)
+    (listener :: <string>) => (listener :: <tcp-listener>)
   make-listener(split(listener, ':'));
 end method make-listener;
 
@@ -296,8 +301,11 @@ define method listener-name
                    listener.listener-host, listener.listener-port)
 end;
 
-define method make-socket
-    (listener :: <listener>) => (socket :: <tcp-server-socket>)
+// TODO(cgay): Implement this for <mock-listener>.
+define generic make-server-socket (listener :: <listener>) => ();
+
+define method make-server-socket
+    (listener :: <tcp-listener>) => ()
   listener.listener-socket := make(<tcp-server-socket>,
                                    host: listener.listener-host,
                                    port: listener.listener-port,
@@ -305,7 +313,7 @@ define method make-socket
 end;
 
 
-define class <ssl-listener> (<listener>)
+define class <ssl-listener> (<tcp-listener>)
   constant slot certificate-filename :: <pathname>,
     required-init-keyword: certificate-filename:;
   constant slot key-filename :: <pathname>,
@@ -318,29 +326,56 @@ define method listener-name
                    listener.listener-host, listener.listener-port)
 end;
 
-define method make-socket
-    (listener :: <ssl-listener>) => (socket :: <tcp-server-socket>)
+define method make-server-socket
+    (listener :: <ssl-listener>) => ()
   listener.listener-socket := make(<tcp-server-socket>,
                                    host: listener.listener-host,
                                    port: listener.listener-port,
                                    ssl?: #t,
                                    certificate: listener.certificate-filename,
-                                   key: listener.key-filename)
+                                   key: listener.key-filename);
 end;
 
 
-define class <client> (<object>)
-  constant slot client-server :: <http-server>,
-    required-init-keyword: server:;
+
+// Clients keep track of a client connection so that it can be shut down
+// gracefully when the server shuts down.  Abstract class separated out for
+// mocking.
 
+define sealed generic client-listener
+    (client :: <client>) => (listener :: <listener>);
+define sealed generic client-stream
+    (client :: <client>) => (stream :: <stream>);
+define sealed generic client-stays-alive?
+    (client :: <client>) => (stays-alive? :: <boolean>);
+define sealed generic close-client
+    (client :: <client>) => ();
+
+define abstract class <client> (<object>)
   constant slot client-listener :: <listener>,
     required-init-keyword: listener:;
-
-  constant slot client-socket :: <tcp-socket>,
-    required-init-keyword: socket:;
-
   slot client-stays-alive? :: <boolean> = #f;
 end class <client>;
+
+define method close-client
+    (client :: <client>) => ()
+  close(client.client-stream, abort?: #t);
+end;
+
+
+define sealed generic client-socket
+    (client :: <tcp-client>) => (socket :: <tcp-socket>);
+
+define class <tcp-client> (<client>)
+  constant slot client-socket :: <tcp-socket>,
+    required-init-keyword: socket:;
+end class <tcp-client>;
+
+define inline method client-stream
+    (client :: <tcp-client>) => (stream :: <tcp-socket>)
+  client.client-socket
+end;
+
 
 
 // TODO: make thread safe
@@ -394,7 +429,8 @@ define method start-server
     if (empty?(server.server-listeners))
       log-info("No listeners were configured; using default (0.0.0.0:%d).",
                $default-http-port);
-      add!(server.server-listeners, make(<listener>, host: "0.0.0.0",
+      add!(server.server-listeners, make(<tcp-listener>,
+                                         host: "0.0.0.0",
                                          port: $default-http-port));
     end if;
     for (listener in server.server-listeners)
@@ -501,7 +537,7 @@ define function join-clients
                   copy-sequence(server.server-clients)
                 end;
   for (client in clients)
-    close(client.client-socket, abort?: #t);
+    close-client(client);
   end;
   log-info("Waiting for connection shutdown...");
   executor-shutdown(server.server-executor);
@@ -540,13 +576,13 @@ define function start-http-listener
           release-listener();
           next-handler();
         end;
-    make-socket(listener);
+    make-server-socket(listener);
     let thread = make(<thread>,
                       name: listener.listener-name,
                       function: run-listener-top-level);
     listener.listener-thread := thread;
   end;
-end start-http-listener;
+end function start-http-listener;
 
 define function listener-top-level
     (server :: <http-server>, listener :: <listener>)
@@ -557,10 +593,7 @@ define function listener-top-level
   let restart? = with-lock (server.server-lock)
                    when (~*exiting-application* &
                          ~listener.listener-exit-requested?)
-                     listener.listener-socket
-                       := make(<server-socket>,
-                               host: listener.listener-host,
-                               port: listener.listener-port);
+                     make-server-socket(listener);
                      inc!(listener.total-restarts);
                      #t
                    end;
@@ -571,7 +604,7 @@ define function listener-top-level
   else
     log-info("%s shutting down", listener.listener-name);
   end;
-end listener-top-level;
+end function listener-top-level;
 
 //---TODO: need to set up timeouts.
 //---TODO: need to limit the number of outstanding clients.
@@ -583,7 +616,7 @@ end listener-top-level;
 // Listen and spawn handlers until listener socket breaks.
 //
 define function do-http-listen
-    (server :: <http-server>, listener :: <listener>)
+    (server :: <http-server>, listener :: <tcp-listener>)
   let server-lock = server.server-lock;
   log-info("%s ready for service", listener.listener-name);
   iterate loop ()
@@ -609,16 +642,15 @@ define function do-http-listen
       let client = #f;
       local method do-respond ()
               with-lock (server-lock) end;   // Wait for setup to finish.
-              let client :: <client> = client;
-              respond-top-level(client);
+              let client :: <tcp-client> = client;
+              respond-top-level(server, client);
             end method;
       with-lock (server-lock)
         block()
           wrapping-inc!(listener.connections-accepted);
           wrapping-inc!(server.connections-accepted);
           executor-request(server.server-executor, do-respond);
-          client := make(<client>,
-                         server: server,
+          client := make(<tcp-client>,
                          listener: listener,
                          socket: socket);
           add!(server.server-clients, client);
@@ -651,25 +683,25 @@ end;
 // If keep-alive is requested, wait for more requests on the same
 // connection.
 //
+// TODO(cgay): Implement this for <mock-client>.
 define function respond-top-level
-    (client :: <client>)
+    (server :: <http-server>, client :: <tcp-client>)
   block ()
     with-socket-thread ()
-      %respond-top-level(client);
+      %respond-top-level(server, client);
     end;
   cleanup
     unless (client.client-stays-alive?)
-      ignore-errors(<socket-condition>,
-                    close(client.client-socket, abort: #t));
-      release-client(client);
+      ignore-errors(<socket-condition>, close-client(client)); 
+      release-client(server, client);
     end;
   end;
 end function respond-top-level;
 
 define function %respond-top-level
-    (client :: <client>)
+    (server :: <http-server>, client :: <client>)
   dynamic-bind (*request* = #f,
-                *server* = client.client-server,
+                *server* = server,
                 *debug-logger* = *server*.debug-logger,
                 *error-logger* = *server*.error-logger,
                 *request-logger* = *server*.request-logger,
@@ -677,7 +709,7 @@ define function %respond-top-level
     block (exit-respond-top-level)
       while (#t)                      // keep alive loop
         with-simple-restart("Skip this request and continue with the next")
-          *request* := make(client.client-server.request-class, client: client);
+          *request* := make(server.request-class, client: client);
           let request :: <basic-request> = *request*;
           block (finish-request)
             // More recently installed handlers take precedence...
@@ -697,19 +729,11 @@ define function %respond-top-level
             let handler <http-error> = rcurry(htl-error-handler, finish-request,
                                               decline-if-debugging: #f);
 
-            read-request(request);
-            let response = make(<response>,
-                                request: request);
-            if (request.request-keep-alive?)
-              set-header(response, "Connection", "Keep-Alive");
-            end if;
-            dynamic-bind (*response* = response,
-                          // Bound to a <page-context> when first requested.
-                          *page-context* = #f)
-              route-request(*server*, request);
-              unless (client.client-stays-alive?)
-                finish-response(*response*);
-              end;
+            read-request(server, request);
+            // handle-request is here explicitly for <mock-http-server> to override.
+            let response :: <response> = handle-request(server, request);
+            unless (client.client-stays-alive?)
+              finish-response(response);
             end;
             force-output(request.request-socket);
           end block; // finish-request
@@ -722,6 +746,28 @@ define function %respond-top-level
     end block; // exit-respond-top-level
   end dynamic-bind;
 end function %respond-top-level;
+
+// This is (at least initially) for <mock-http-server> to override.
+define open generic handle-request
+    (server :: <http-server>, request :: <request>) => (response :: <response>);
+
+// A convenient entry point for tests to call.  Binds needed dynamic
+// variables so that resources should work normally.
+define method handle-request
+    (server :: <http-server>, request :: <request>) => (response :: <response>)
+  let response = make(<response>, request: request);
+  if (request.request-keep-alive?)
+    set-header(response, "Connection", "Keep-Alive");
+  end;
+  // *page-context* is bound to a <page-context> when first requested
+  // via page-context().
+  dynamic-bind (*request* = request,
+                *response* = response,
+                *page-context* = #f)
+    route-request(server, request);
+  end;
+  response
+end method handle-request;
 
 // Find a resource for the request and call respond on it.
 // Signal 404 if no resource can be found.
@@ -768,7 +814,7 @@ define function htl-error-handler
     block ()
       log-debug("Error handling request: %s", cond);
       if (send-response)
-        send-error-response(*request*, cond);
+        send-error-response(*server*, *request*, cond);
       end;
     cleanup
       exit-function()
@@ -779,11 +825,11 @@ define function htl-error-handler
 end function htl-error-handler;
 
 define function send-error-response
-    (request :: <request>, cond :: <condition>)
+    (server :: <http-server>, request :: <request>, cond :: <condition>)
   block (exit)
     let handler <error>
       = method (cond, next-handler)
-          if (debugging-enabled?(request.request-server))
+          if (server.debugging-enabled?)
             next-handler();
           else
             log-debug("An error occurred while sending error response. %s", cond);
@@ -793,7 +839,6 @@ define function send-error-response
     send-error-response-internal(request, cond);
   end;
 end function send-error-response;
-
 
 define method send-error-response-internal
     (request :: <request>, err :: <error>)
@@ -820,5 +865,3 @@ define method send-error-response-internal
   response.response-reason-phrase := one-liner;
   finish-response(response);
 end method send-error-response-internal;
-
-

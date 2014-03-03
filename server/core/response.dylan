@@ -129,7 +129,6 @@ define method send-chunk
   log-content(count-string);
 
   let contents = response.response-stream.stream-sequence;
-
   write(socket, contents, end: count);
   write(socket, "\r\n");
   if (*log-content?*)

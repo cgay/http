@@ -53,7 +53,6 @@ define function make-server
         keys)
 end;
 
-
 define class <echo-resource> (<resource>)
 end;
 
@@ -88,3 +87,19 @@ define function make-x-url
   test-url(format-to-string("/x?n=%d", n))
 end;
 
+
+define class <mock-http-server> (<http-server>)
+end class <mock-http-server>;
+
+define function make-mock-server
+    (#rest keys, #key listeners, #all-keys)
+  apply(make, <mock-http-server>,
+        listeners: listeners | #[],
+        keys)
+end;
+
+define method start-server
+    (server :: <mock-http-server>, #key background :: <boolean>, wait :: <boolean>)
+ => (started? :: <boolean>)
+  #t                            // good enough for now
+end method start-server;

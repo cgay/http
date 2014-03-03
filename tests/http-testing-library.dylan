@@ -1,4 +1,5 @@
 Module: dylan-user
+Synopsis: HTTP testing infrastructure
 Copyright: See LICENSE in this distribution for details.
 
 define library http-testing
@@ -34,6 +35,7 @@ define module http-testing
     test-url,
     root-url,
     make-listener,
+    make-mock-server,
     make-server,
     <x-resource>, make-x-url,
     with-http-server;
