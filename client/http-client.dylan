@@ -101,46 +101,27 @@ end;
 // object and initialize it with the message headers and Status-Line data,
 // after which one reads from the response object itself.
 //
-define open class <http-connection> (<basic-stream>)
-  slot connection-socket :: <tcp-socket>;
-  slot connection-host :: <string>;
-
-  slot outgoing-chunk-size :: <integer>,
-    init-value: 8192,
+define open abstract class <http-connection> (<basic-stream>)
+  slot connection-socket :: <stream>,
+    init-keyword: socket:;
+  constant slot connection-host :: <string>,
+    init-keyword: host:;
+  constant slot connection-port :: <integer>,
+    init-keyword: port:;
+  slot outgoing-chunk-size :: <integer> = 8192,
     init-keyword: outgoing-chunk-size:;
-
-  slot connection-sent-headers :: false-or(<table>),
-    init-value: #f;
+  slot connection-sent-headers :: false-or(<table>) = #f;
   slot write-buffer :: <byte-string>;
-  slot write-buffer-index :: <integer>,
-    init-value: 0;
+  slot write-buffer-index :: <integer> = 0;
   // Number of bytes written so far for the current request message body only.
-  slot message-bytes-written :: <integer>,
-    init-value: 0;
-
+  slot message-bytes-written :: <integer> = 0;
 end class <http-connection>;
 
 define method initialize
-    (conn :: <http-connection>, #rest socket-args, #key host :: <string>)
+    (conn :: <http-connection>, #rest args, #key)
   next-method();
-  conn.connection-socket := apply(make, <tcp-socket>,
-                                  remove-keys(socket-args, outgoing-chunk-size:));
-  conn.write-buffer := make(<byte-string>,
-                             size: conn.outgoing-chunk-size, fill: ' ');
-
-  // We store the GIVEN host name locally so we're not subject to the vagaries
-  // of the <tcp-socket> implementation.  The doc implies that it may be converted
-  // to the canonical host name and we generally want to send Host headers with
-  // the host name we were given by the user.  (The port number, on the other
-  // hand, we can get from the socket.)
-  conn.connection-host := host;
+  conn.write-buffer := make(<byte-string>, size: conn.outgoing-chunk-size, fill: ' ');
 end method initialize;
-
-define method connection-port
-    (conn :: <http-connection>)
- => (port :: <integer>)
-  conn.connection-socket.local-port
-end method connection-port;
 
 define method chunked?
     (conn :: <http-connection>)
@@ -150,7 +131,7 @@ define method chunked?
 end method chunked?;
 
 // Override this to create a progress meter for sending request data.
-// (Byte count is only for message body data, not headers, chunk wrappers, etc.)
+// byte-count is the total bytes sent in the message body.
 //
 define open generic note-bytes-sent
     (conn :: <http-connection>, byte-count :: <integer>);
@@ -159,6 +140,17 @@ define method note-bytes-sent
     (conn :: <http-connection>, byte-count :: <integer>)
   // default method does nothing
 end;
+
+
+define sealed class <tcp-http-connection> (<http-connection>)
+end;
+
+define method initialize
+    (conn :: <tcp-http-connection>, #rest args, #key)
+  next-method();
+  conn.connection-socket := apply(make, <tcp-socket>,
+                                  remove-keys(args, #"outgoing-chunk-size"));
+end method initialize;
 
 
 //////////////////////////////////////////
@@ -657,34 +649,35 @@ end method read-status-line;
 // Convenience APIs
 ///////////////////////////////////////////
 
-define function make-http-connection
-    (host-or-url, #rest initargs, #key port, #all-keys)
-  let host = host-or-url;
-  let port = port | $default-http-port;
-  if (instance?(host, <uri>))
-    let uri :: <uri> = host;
-    host := uri-host(uri);
-    if (empty?(host))
-      error(make(<simple-error>,
-                 format-string: "The URI provided to with-http-connection "
-                   "must have a host component: %s",
-                 format-arguments: list(build-uri(host))));
-    end if;
-    port := uri-port(uri) | port;
-  end if;
-  apply(make, <http-connection>, host: host, port: port, initargs)
-end function make-http-connection;
+define open generic make-http-connection
+    (target :: <object>, #key, #all-keys) => (conn :: <http-connection>);
 
-// with-http-connection(conn = url) blah end;
-// with-http-connection(conn = host, ...<http-connection> initargs...) blah end;
-//
+define method make-http-connection
+    (target :: <string>, #rest args, #key) => (conn :: <http-connection>)
+  apply(make-http-connection, parse-uri(target), args)
+end;
+
+define method make-http-connection
+    (uri :: <uri>, #key) => (conn :: <http-connection>)
+  let host = uri-host(uri);
+  if (empty?(host))
+    error(make(<simple-error>,
+               format-string: "The URI provided to make-http-connection "
+                 "must have a host component: %s",
+               format-arguments: list(uri)));
+  end;
+  make(<tcp-http-connection>,
+       host: host,
+       port: uri-port(uri) | $default-http-port)
+end method make-http-connection;
+
 define macro with-http-connection
-  { with-http-connection (?conn:name = ?host-or-url:expression, #rest ?initargs:*)
+  { with-http-connection (?conn:name = ?target:expression, #rest ?initargs:*)
       ?:body
     end }
     => { let _conn = #f;
          block ()
-           _conn := make-http-connection(?host-or-url, ?initargs);
+           _conn := make-http-connection(?target, ?initargs);
            let ?conn = _conn;
            // Bind *http-connection* so that start-request knows it should add
            // a "Connection: Keep-alive" header if no Connection header is present.

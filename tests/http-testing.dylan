@@ -89,13 +89,28 @@ end;
 
 
 define class <mock-http-server> (<http-server>)
-end class <mock-http-server>;
+end;
 
 define function make-mock-server
-    (#rest keys, #key listeners, #all-keys)
+    (#rest args, #key listeners, #all-keys)
   apply(make, <mock-http-server>,
         listeners: listeners | #[],
-        keys)
+        args)
+end;
+
+define class <mock-http-connection> (<http-connection>)
+  inherited slot connection-host = "localhost";
+  inherited slot connection-port = $default-http-port;
+  constant slot connection-server :: <mock-http-server>,
+    required-init-keyword: server:;
+end class <mock-http-connection>;
+
+// Adds a method to the generic in http-client.
+define method make-http-connection
+    (target :: <mock-http-server>, #key) => (conn :: <mock-http-connection>)
+  make(<mock-http-connection>,
+       server: target,
+       socket: make(<string-stream>))
 end;
 
 define method start-server

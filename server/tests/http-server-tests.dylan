@@ -4,6 +4,8 @@ Copyright: See LICENSE in this distribution for details.
 define test test-mock-server ()
   let server = make-mock-server();
   assert-no-errors(start-server(server));
+  let request = make(<request>);
+//  handle-request(server, request);
   assert-no-errors(stop-server(server));
 end test test-mock-server;
 
@@ -127,10 +129,10 @@ end suite start-stop-test-suite;
 //
 define test chunked-request-test ()
   // Client requests are chunked if we don't add a Content-Length header.
-  with-http-server (server = make-server())
+  with-http-server (server = make-mock-server())
     add-resource(server, "/echo", make(<echo-resource>));
     block ()
-      with-http-connection(conn = test-url("/echo"),
+      with-http-connection(conn = server,
                            outgoing-chunk-size: 8)
         for (data-size in #(0, 1, 7, 8, 9, 200))
           let data = make(<byte-string>, size: data-size, fill: 'x');
