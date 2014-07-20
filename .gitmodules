@@ -25,3 +25,6 @@
 [submodule "submodules/serialization"]
 	path = submodules/serialization
 	url = https://github.com/dylan-foundry/serialization.git
+[submodule "submodules/template-engine"]
+	path = submodules/template-engine
+	url = https://github.com/dylan-lang/template-engine.git
