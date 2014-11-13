@@ -12,8 +12,9 @@ define method initialize (page :: <json-page>, #key)
 end method;
 
 // set the correct content-type, then send "Hello, World!".
-define method respond (page :: <json-page>, #key)
-  set-header(current-response(), "Content-Type", "application/json");
+define method respond
+    (page :: <json-page>, request :: <request>, response :: <response>, #key)
+  set-header(response, "Content-Type", "application/json");
   output(write-object-to-json-string(page.message));
 end method respond;
 

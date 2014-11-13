@@ -8,8 +8,9 @@ define thread variable *results* = #f;
 define class <search-page> (<resource>)
 end;
 
-define method respond (page :: <search-page>, #key)
-  set-header(current-response(), "Content-Type", "text/html");
+define method respond
+    (page :: <search-page>, request :: <request>, response :: <response>, #key)
+  set-header(response, "Content-Type", "text/html");
   let search-string = get-query-value("search");
   let results = element($all-symbols, search-string, default: #());
   dynamic-bind(*results* = results)

@@ -59,14 +59,15 @@ define class <echo-resource> (<resource>)
 end;
 
 define method respond-to-get
-    (resource :: <echo-resource>, #key) => ()
-  // should eventually be output(read-to-end(current-request()))
-  output(request-content(current-request()));
+    (request :: <request>, response :: <response>, resource :: <echo-resource>, #key)
+ => ()
+  // should eventually be output(response, read-to-end(request))
+  output(response, request-content(request));
 end;
 
 define method respond-to-post
-    (resource :: <echo-resource>, #key) => ()
-  respond-to-get(resource)
+    (request :: <request>, response :: <response>, resource :: <echo-resource>, #key) => ()
+  respond-to-get(request, response, resource)
 end;
 
 
@@ -74,14 +75,14 @@ define class <x-resource> (<resource>)
 end;
 
 define method respond-to-get
-    (resource :: <x-resource>, #key) => ()
-  let n = get-query-value("n", as: <integer>);
-  output(make(<byte-string>, size: n, fill: 'x'))
+    (request :: <request>, response :: <response>, resource :: <x-resource>, #key) => ()
+  let n = get-query-value(request, "n", as: <integer>);
+  output(response, make(<byte-string>, size: n, fill: 'x'))
 end;
 
 define method respond-to-post
-    (resource :: <x-resource>, #key) => ()
-  respond-to-get(resource)
+    (request :: <request>, response :: <response>, resource :: <x-resource>, #key) => ()
+  respond-to-get(request, response, resource)
 end;
 
 define function make-x-url

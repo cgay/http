@@ -47,14 +47,21 @@ define test test-find-multi-view-file ()
                 args)
         end;
   local method multi-view (basename, accept-header)
-          dynamic-bind (*server* = make-server())
-            find-multi-view-file(
-              make-directory-resource(),
-              merge-locators(as(<file-locator>, basename), test-directory),
-              mime-type-map: $default-mime-type-map,
-              accept-header: parse-header-value(#"accept", accept-header))
+          let server = make-server();
+          let client = make(<client>,
+                            server: server,
+                            listener: make-listener("0.0.0.0:12345"));
+          let request = make(<request>,
+                             client: client);
+          dynamic-bind (*server* = server)
+            find-multi-view-file(make-directory-resource(),
+                                 merge-locators(as(<file-locator>, basename),
+                                                test-directory),
+                                 request,
+                                 mime-type-map: $default-mime-type-map,
+                                 accept-header: parse-header-value(#"accept", accept-header))
           end;
-        end;
+        end method multi-view;
   block ()
     if (~file-exists?(test-directory))
       // create-directory has a weird signature!

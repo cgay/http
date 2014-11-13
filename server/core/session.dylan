@@ -44,21 +44,21 @@ define method get-session
 end;
 
 define method ensure-session
-    (request :: <request>) => (session :: <session>)
+    (request :: <request>, response :: <response>) => (session :: <session>)
   let session = get-session(request);
   unless (session)
-    session := new-session(request);
+    session := new-session(request, response);
   end unless;
-  session;
-end;
+  session
+end method ensure-session;
 
 define method clear-session
-    (request :: <request>) => ();
+    (request :: <request>, response :: <response>) => ()
   let session = get-session(request);
   if (session)
     remove-key!(*server*.server-sessions, session.session-id);
     request.request-session := #f;
-    add-cookie(*response*, *server*.server-session-id, -1,
+    add-cookie(response, *server*.server-session-id, -1,
                max-age: *server*.session-max-age,
                path: "/",
                // domain: ??? ---TODO:
@@ -69,7 +69,8 @@ define method clear-session
 end method clear-session;
 
 define method current-session
-    (request :: <request>) => (session :: false-or(<session>))
+    (request :: <request>, response :: <response>)
+ => (session :: false-or(<session>))
   let cookies = get-header(request, "cookie", parsed: #t);
   let cookie =
     cookies & find-element(cookies,
@@ -78,21 +79,22 @@ define method current-session
                            end);
   if (cookie)
     let session-id = string-to-integer(cookie-value(cookie));
-    element(*server*.server-sessions, session-id, default: #f) | new-session(request)
+    element(*server*.server-sessions, session-id, default: #f)
+      | new-session(request, response)
   else
-    new-session(request)
+    new-session(request, response)
   end
 end method current-session;
 
 define method new-session
-    (request :: <request>) => (session :: <session>)
+    (request :: <request>, response :: <response>) => (session :: <session>)
   let id = next-session-id(*server*);
   // TODO: This "unless" is a temporary hack to prevent blowing up when
   //       chunked transfer encoding is being used and we've sent the
   //         headers early.  (Only happens with very small chunk size,
   //         but still, it should work...)  Need to rethink sessions a bit.
-  unless (headers-sent?(*response*))
-    add-cookie(*response*, *server*.server-session-id, id,
+  unless (headers-sent?(response))
+    add-cookie(response, *server*.server-session-id, id,
                max-age: *server*.session-max-age,
                path: "/",
                // domain: ??? ---TODO:

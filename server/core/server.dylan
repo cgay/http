@@ -155,17 +155,17 @@ define sealed domain initialize (<http-server>);
 //// Virtual hosts
 
 define open generic find-virtual-host
-    (server :: <http-server>, fqdn :: <string>)
+    (server :: <http-server>, request :: <request>)
  => (vhost :: <virtual-host>);
 
 define method find-virtual-host
-    (server :: <http-server>, fqdn :: <string>)
+    (server :: <http-server>, request :: <request>)
  => (vhost :: <virtual-host>)
-  let fqdn = as-lowercase(fqdn);
+  let fqdn = as-lowercase(request.request-host);
   element(server.virtual-hosts, fqdn, default: #f)
   | iff(server.use-default-virtual-host?,
         server.default-virtual-host,
-        %resource-not-found-error())
+        %resource-not-found-error(request))
 end method find-virtual-host;
 
 define open generic add-virtual-host
@@ -298,7 +298,7 @@ define method make-socket
                                    host: listener.listener-host,
                                    port: listener.listener-port,
                                    backlog: 128);
-end;
+end method make-socket;
 
 
 define class <ssl-listener> (<listener>)
@@ -306,7 +306,7 @@ define class <ssl-listener> (<listener>)
     required-init-keyword: certificate-filename:;
   constant slot key-filename :: <pathname>,
     required-init-keyword: key-filename:;
-end;
+end class <ssl-listener>;
 
 define method listener-name
     (listener :: <ssl-listener>) => (name :: <string>)
@@ -322,7 +322,7 @@ define method make-socket
                                    ssl?: #t,
                                    certificate: listener.certificate-filename,
                                    key: listener.key-filename)
-end;
+end method make-socket;
 
 
 define class <client> (<object>)
@@ -333,7 +333,7 @@ define class <client> (<object>)
     required-init-keyword: listener:;
 
   constant slot client-socket :: <tcp-socket>,
-    required-init-keyword: socket:;
+    init-keyword: socket:;      // Not required so tests can omit it.
 
   slot client-stays-alive? :: <boolean> = #f;
 end class <client>;
@@ -348,7 +348,7 @@ define function ensure-sockets-started ()
     //start-ssl-sockets();
     *sockets-started?* := #t;
   end;
-end;
+end function ensure-sockets-started;
 
 define thread variable *server* :: false-or(<http-server>) = #f;
 
@@ -613,20 +613,6 @@ define function do-http-listen
 end function do-http-listen;
 
 
-define thread variable *request* :: false-or(<request>) = #f;
-
-define inline function current-request
-    () => (request :: <request>)
-  *request* | application-error(message: "There is no active HTTP request.")
-end;
-
-define thread variable *response* :: false-or(<response>) = #f;
-
-define inline function current-response
-    () => (response :: <response>)
-  *response* | application-error(message: "There is no active HTTP response.")
-end;
-
 // Called (in a new thread) each time a new connection is opened.
 // If keep-alive is requested, wait for more requests on the same
 // connection.
@@ -648,8 +634,7 @@ end function respond-top-level;
 
 define function %respond-top-level
     (client :: <client>)
-  dynamic-bind (*request* = #f,
-                *server* = client.client-server,
+  dynamic-bind (*server* = client.client-server,
                 *debug-log* = *server*.debug-log,
                 *error-log* = *server*.error-log,
                 *request-log* = *server*.request-log,
@@ -658,7 +643,6 @@ define function %respond-top-level
       while (#t)                      // keep alive loop
         with-simple-restart("Skip this request and continue with the next")
           let request :: <request> = make(<request>, client: client);
-          *request* := request;
           block (finish-request)
             // More recently installed handlers take precedence...
             let handler <error> = rcurry(htl-error-handler, finish-request);
@@ -679,12 +663,11 @@ define function %respond-top-level
 
             read-request(request);
             let response = make(<response>, request: request);
-            dynamic-bind (*response* = response,
-                          // Bound to a <page-context> when first requested.
-                          *page-context* = #f)
-              route-request(*server*, request);
+            // *page-context* is rebound to a <page-context> when first requested.
+            dynamic-bind (*page-context* = #f)
+              route-request(*server*, request, response);
               unless (client.client-stays-alive?)
-                finish-response(*response*);
+                finish-response(response);
               end;
             end;
             force-output(request.request-socket);
@@ -703,7 +686,7 @@ end function %respond-top-level;
 // Signal 404 if no resource can be found.
 //
 define method route-request
-    (server :: <http-server>, request :: <request>)
+    (server :: <http-server>, request :: <request>, response :: <response>)
   let old-path :: <string> = build-path(request.request-url);
   let (new-path :: <string>, rule) = rewrite-url(old-path, server.rewrite-rules);
   if (new-path ~= old-path)
@@ -712,7 +695,9 @@ define method route-request
     // TODO(cgay): This can blow up if request-host is #f.  I think
     // request-host needs to always be set.  If not to the host in the Host
     // header, then to the server host.
-    let vhost :: <virtual-host> = find-virtual-host(server, request.request-host);
+    let hostname = request.request-host;
+    let vhost :: <virtual-host> = find-virtual-host(server, hostname)
+      | %resource-not-found-error(request);
 
     *debug-log* := vhost.debug-log;
     *error-log* := vhost.error-log;
@@ -724,11 +709,11 @@ define method route-request
     request.request-url-path-prefix := join(prefix, "/");
     request.request-url-path-suffix := join(suffix, "/");
 
-    let (bindings, unbound, leftovers) = path-variable-bindings(resource, suffix);
+    let (bindings, unbound, leftovers) = path-variable-bindings(request, resource, suffix);
     if (~empty?(leftovers))
-      unmatched-url-suffix(resource, leftovers);
+      unmatched-url-suffix(request, resource, leftovers);
     end;
-    %respond(resource, bindings);
+    %respond(request, response, resource, bindings);
     if (instance?(resource, <sse-resource>))
       request.request-client.client-stays-alive? := #t;
     end;
@@ -737,6 +722,7 @@ end method route-request;
 
 define function htl-error-handler
     (cond :: <condition>, next-handler :: <function>, exit-function :: <function>,
+     request :: <request>, response :: <response>,
      #key decline-if-debugging = #t, send-response = #t)
   if (decline-if-debugging & debugging-enabled?(*server*))
     next-handler()
@@ -744,7 +730,7 @@ define function htl-error-handler
     block ()
       log-debug("Error handling request: %s", cond);
       if (send-response)
-        send-error-response(*request*, cond);
+        send-error-response(request, cond);
       end;
     cleanup
       exit-function()

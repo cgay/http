@@ -34,7 +34,7 @@ define test test-repeated-start-stop-with-connection ()
   for (i from 1 to 5)
     let server = make-server(debug: #t);
     add-resource(server, "/", function-resource(method ()
-                                                  output("hi there");
+                                                  output(response, "hi there");
                                                 end));
     block ()
       check-equal(fmt("repeated-start-stop-test check #%d", i),

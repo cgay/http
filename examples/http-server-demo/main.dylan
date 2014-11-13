@@ -14,9 +14,11 @@ define class <basic-resource-1> (<resource>)
 end;
 
 define method respond-to-get
-    (resource :: <basic-resource-1>, #key) => ()
-  set-header(current-response(), "Content-Type", "text/html");
-  output("<html><body>This is the output of respond-to-get(&lt;basic-resource-1&gt;)."
+    (request :: <request>, response :: <response>, resource :: <basic-resource-1>, #key)
+ => ()
+  set-header(response, "Content-Type", "text/html");
+  output(response,
+         "<html><body>This is the output of respond-to-get(&lt;basic-resource-1&gt;)."
          "<p>Use your browser's Back button to return to the example.</p>"
          "</body></html>");
 end method respond-to-get;
@@ -25,14 +27,15 @@ define class <basic-resource-2> (<resource>)
 end;
 
 define method respond
-    (resource :: <basic-resource-2>, #key)
-  if (current-request().request-method = $http-get-method)
-    set-header(current-response(), "Content-Type", "text/plain");
-    output("This resource uses the 'respond' method directly.");
+    (request :: <request>, response :: <response>, resource :: <basic-resource-2>, #key)
+ => ()
+  if (request.request-method = $http-get-method)
+    set-header(response, "Content-Type", "text/plain");
+    output(response, "This resource uses the 'respond' method directly.");
   else
     next-method();  // don't handle the request
   end;
-end;
+end method respond;
 
 
 // For this resource to work as expected, add-resource is called with
@@ -43,10 +46,11 @@ define class <basic-resource-3> (<resource>)
 end;
 
 define method respond-to-get
-    (resource :: <basic-resource-3>, #key vars) => ()
-  let request :: <request> = current-request();
-  set-header(current-response(), "Content-Type", "text/html");
-  output("<html><body>"
+    (request :: <request>, response :: <response>, resource :: <basic-resource-3>, #key vars)
+ => ()
+  set-header(response, "Content-Type", "text/html");
+  output(response,
+         "<html><body>"
            "<p>URL prefix: %s</p>"
            "<p>URL suffix: %s</p>"
            "<p>vars: %s</p>"
@@ -54,7 +58,7 @@ define method respond-to-get
          request.request-url-path-prefix,
          request.request-url-path-suffix,
          vars);
-end;
+end method respond-to-get;
 
 // Note the use of do-query-values to find all the values passed in
 // the URL (e.g., /hello?foo=1&bar=2).  You can also use get-query-value
@@ -65,17 +69,19 @@ define class <basic-resource-4> (<resource>)
 end;
 
 define method respond-to-get
-    (resource :: <basic-resource-4>, #key) => ()
-  set-header(current-response(), "Content-Type", "text/plain");
-  if (count-query-values() > 0)
-    output("Query values are:");
+    (request :: <request>, response :: <response>, resource :: <basic-resource-4>, #key)
+ => ()
+  set-header(response, "Content-Type", "text/plain");
+  if (count-query-values(request) > 0)
+    output(response, "Query values are:");
   else
-    output("No query values were passed in the URL.");
+    output(response, "No query values were passed in the URL.");
   end;
-  do-query-values(method (key, val)
-                    output("\nkey = %s, val = %s", key, val);
+  do-query-values(request,
+                  method (key, val)
+                    output(response, "\nkey = %s, val = %s", key, val);
                   end);
-  output("\n\nUse your browser's Back button to return to the demo.");
+  output(response, "\n\nUse your browser's Back button to return to the demo.");
 end;
 
 
@@ -115,17 +121,18 @@ end;
 define taglib example ()
   prefix "x";
 
-  tag hello (page :: <demo-page>) (arg)
-    output(arg);
+  tag hello (request :: <request>, response :: <response>, page :: <demo-page>) (arg)
+    output(response, arg);
 
-  body tag repeat (page :: <demo-page>, process-body) (n :: <integer>)
+  body tag repeat (request :: <request>, response :: <response>, page :: <demo-page>,
+                   process-body) (n :: <integer>)
     for (i from 1 to n)
       process-body()
     end;
 
   action logged-in?;
 
-  action word-list (page :: <demo-page>)
+  action word-list (request :: <request>, response :: <response>, page :: <demo-page>)
     #("a", "b", "c");
 end taglib example;
 
@@ -133,9 +140,9 @@ end taglib example;
 // Defines a tag that looks like <demo:hello/> in the DSP source
 // file.  i.e., it has no body.
 define tag hello in demo
-    (page :: <demo-page>)
+    (request :: <request>, response :: <response>, page :: <demo-page>)
     ()
-  output("Hello, world!");
+  output(response, "Hello, world!");
 end;
 
 // This tag demonstrates the use of tag keyword arguments.  The tag call looks
@@ -145,9 +152,9 @@ end;
 // parse-tag-arg generic.
 //
 define tag show-keys in demo
-    (page :: <demo-page>)
+    (request :: <request>, response :: <response>, page :: <demo-page>)
     (arg1 :: <integer>, arg2)
-  output("The value of arg1 + 1 is %=.  The value of arg2 is %=.",
+  output(response, "The value of arg1 + 1 is %=.  The value of arg2 is %=.",
          arg1 + 1, arg2);
 end;
 
@@ -155,8 +162,8 @@ end;
 // "dsp" taglib.  For example, <dsp:if test="logged-in?">...</dsp:if>
 //
 define named-method logged-in? in demo
-    (page :: <demo-page>)
-  let session = get-session(current-request());
+    (page :: <demo-page>, request :: <request>, response :: <response>)
+  let session = get-session(request);
   session & get-attribute(session, "username");
 end;
 
@@ -169,8 +176,8 @@ define class <logout-page> (<demo-page>)
 end;
 
 define method respond-to-get
-    (page :: <logout-page>, #key) => ()
-  let session = get-session(current-request());
+    (request :: <request>, response :: <response>, page :: <logout-page>, #key) => ()
+  let session = get-session(request);
   remove-attribute(session, "username");
   remove-attribute(session, "password");
   // Process the template for this page...
@@ -183,13 +190,13 @@ end;
 
 // ...so handle the POST by storing the form values in the session.
 define method respond-to-post
-    (page :: <welcome-page>, #key) => ()
-  let username = get-query-value("username");
-  let password = get-query-value("password");
+    (request :: <request>, response :: <response>, page :: <welcome-page>, #key) => ()
+  let username = get-query-value(request, "username");
+  let password = get-query-value(request, "password");
   let username-supplied? = username & username ~= "";
   let password-supplied? = password & password ~= "";
   if (username-supplied? & password-supplied?)
-    let session = get-session(current-request());
+    let session = get-session(request);
     set-attribute(session, "username", username);
     set-attribute(session, "password", password);
     // Process the template for this page...
@@ -204,22 +211,20 @@ define method respond-to-post
     // For good measure we'll add a note at the top of the page, not associated
     // with a particular field.
     add-page-error("Please fix the errors below.");
-    respond-to-get(*login-page*);
+    respond-to-get(request, response, *login-page*);
   end;
 end method respond-to-post;
 
 // Note this tag is defined on <demo-page> so it can be accessed from any
 // page in this example web application.
 define tag current-username in demo
-    (page :: <demo-page>)
+    (request :: <request>, response :: <response>, page :: <demo-page>)
     ()
-  let request = current-request();
-  let response = current-response();
   let username
-    = get-query-value("username")
+    = get-query-value(request, "username")
         | get-attribute(get-session(request), "username");
-  username & output(username);
-end;
+  username & output(response, username);
+end tag current-username;
 
 
 
@@ -237,9 +242,9 @@ define thread variable *repetition-number* = 0;
 // See iterator.dsp for how this tag is invoked.
 //
 define body tag repeat in demo
-    (page :: <demo-page>, do-body :: <function>)
+    (request :: <request>, response :: <response>, page :: <demo-page>, do-body :: <function>)
     ()
-  let n-str = get-query-value("n");
+  let n-str = get-query-value(request, "n");
   let n = (n-str & string-to-integer(n-str)) | 5;
   for (i from 1 to n)
     dynamic-bind (*repetition-number* = i)
@@ -249,9 +254,9 @@ define body tag repeat in demo
 end;
 
 define tag display-iteration-number in demo
-    (page :: <demo-page>)
+    (request :: <request>, response :: <response>, page :: <demo-page>)
     ()
-  output("%d", *repetition-number*);
+  output(response, "%d", *repetition-number*);
 end;
 
 
@@ -261,7 +266,7 @@ end;
 // This method is used as the row-generator function for a dsp:table call.
 // It must return a <sequence>.
 define named-method animal-generator in demo
-    (page :: <demo-page>)
+    (request :: <request>, response :: <response>, page :: <demo-page>)
   #[#["dog", "perro", "gou3"],
     #["cat", "gato", "mao1"],
     #["cow", "vaca", "niu2"]]
@@ -269,37 +274,38 @@ end;
 
 // The row-generator for the table with no rows.
 define named-method no-rows-generator in demo
-    (page :: <demo-page>)
+    (request :: <request>, response :: <response>, page :: <demo-page>)
   #[]
 end;
 
 define tag english-word in demo
-    (page :: <demo-page>)
+    (request :: <request>, response :: <response>, page :: <demo-page>)
     ()
   let row = current-row();
-  output("%s", row[0]);
+  output(response, "%s", row[0]);
 end;
 
 define tag spanish-word in demo
-    (page :: <demo-page>)
+    (request :: <request>, response :: <response>, page :: <demo-page>)
     ()
   let row = current-row();
-  output("%s", row[1]);
+  output(response, "%s", row[1]);
 end;
 
 define tag pinyin-word in demo
-    (page :: <demo-page>)
+    (request :: <request>, response :: <response>, page :: <demo-page>)
     ()
   let row = current-row();
-  output("%s", row[2]);
+  output(response, "%s", row[2]);
 end;
 
 // Can be replaced by CSS in recent browsers.
 //
 define tag row-bgcolor in demo
-    (page :: <demo-page>)
+    (request :: <request>, response :: <response>, page :: <demo-page>)
     ()
-  output(if(even?(current-row-number()))
+  output(response,
+         if(even?(current-row-number()))
            "#EEEEEE"
          else
            "#FFFFFF"

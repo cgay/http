@@ -246,16 +246,19 @@ end;
 define class <index-page> (<resource>)
 end;
 
-define method respond (page :: <index-page>, #key)
-  set-header(current-response(), "Content-Type", "text/html");
+define method respond
+    (page :: <index-page>, request :: <request>, response :: <response>, #key)
+  set-header(response, "Content-Type", "text/html");
   process-template($index-page);
 end;
 
 define class <symbol-page> (<resource>)
 end;
 
-define method respond (page :: <symbol-page>, #key library-name, module-name, symbol-name)
-  set-header(current-response(), "Content-Type", "text/html");
+define method respond
+    (page :: <symbol-page>, request :: <request>, response :: <response>,
+     #key library-name, module-name, symbol-name)
+  set-header(response, "Content-Type", "text/html");
   if (library-name & ~empty?(library-name))
     let project = find-project(library-name);
     open-project-compiler-database(project,

@@ -216,10 +216,10 @@ define method forward-iteration-protocol
 end method forward-iteration-protocol;
 
 define tag show-page-links in dsp
-    (page :: <dylan-server-page>)
+    (request :: <request>, response :: <resource>, page :: <dylan-server-page>)
     (name :: <string>, url :: <string>, query-value :: <string>,
      context, ellipsis, prev, next, center-span, min-pages)
-  let paginator :: false-or(<paginator>) = get-context-value(name, context);
+  let paginator :: false-or(<paginator>) = get-context-value(request, name, context);
   let links = page-links(paginator,
                          ellipsis: ellipsis,
                          prev: prev,
@@ -228,7 +228,7 @@ define tag show-page-links in dsp
                          min-pages: min-pages & string-to-integer(min-pages));
   // TODO: There should be a special css class for the current page;
   //       currently it's just "unlinked-page-number".
-  output("%s",
+  output(response, "%s",
          with-xml ()
            span (class => "paginator") {
              do(for (page-link :: <page-link> in links,

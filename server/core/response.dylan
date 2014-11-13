@@ -321,7 +321,7 @@ end method add-cookie;
 // For convenience in responders, tags, named-methods, etc.
 //
 define function output
-    (format-string, #rest format-args)
-  apply(format, current-response(), format-string, format-args)
+    (response :: <response>, format-string, #rest format-args)
+  apply(format, response, format-string, format-args)
 end;
 

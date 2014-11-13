@@ -122,12 +122,12 @@ define constant $default-media-type-map
     end;
 
 define function %resource-not-found-error
-    (#rest args, #key url, #all-keys)
+    (request, #rest args, #key url, #all-keys)
   let url = iff(instance?(url, <uri>), build-path(url), url);
   apply(resource-not-found-error,
-        url: url | build-path(request-url(current-request())),
+        url: url | build-path(request-url(request)),
         args)
-end;
+end function %resource-not-found-error;
 
 
 
@@ -155,28 +155,34 @@ end;
 
 //// URLs
 
-define open generic redirect-to (object :: <object>);
+define open generic redirect-to
+    (object :: <object>, request :: <request>, response :: <response>);
 
-define method redirect-to (url :: <string>)
-  let headers = current-response().raw-headers;
+define method redirect-to
+    (url :: <string>, request :: <request>, response :: <response>)
+  let headers = response.raw-headers;
   set-header(headers, "Location", url);
   see-other-redirect(headers: headers);
 end method redirect-to;
 
-define method redirect-to (url :: <url>)
-  redirect-to(build-uri(url));
+define method redirect-to
+    (url :: <url>, request :: <request>, response :: <response>)
+  redirect-to(build-uri(url), request, response);
 end;
 
-define open generic redirect-temporarily-to (object :: <object>);
+define open generic redirect-temporarily-to
+    (object :: <object>, request :: <request>, response :: <response>);
 
-define method redirect-temporarily-to (url :: <string>)
-  let headers = current-response().raw-headers;
+define method redirect-temporarily-to
+    (url :: <string>, request :: <request>, response :: <response>)
+  let headers = response.raw-headers;
   set-header(headers, "Location", url);
   moved-temporarily-redirect(headers: headers);
 end method redirect-temporarily-to;
 
-define method redirect-temporarily-to (url :: <url>)
-  redirect-temporarily-to(build-uri(url));
+define method redirect-temporarily-to
+    (url :: <url>, request :: <request>, response :: <response>)
+  redirect-temporarily-to(build-uri(url), request, response);
 end;
 
 
@@ -194,6 +200,7 @@ end;
 
 define thread variable *page-context* :: false-or(<page-context>) = #f;
 
+// TODO(cgay): not sure!
 define method page-context
     () => (context :: false-or(<page-context>))
   if (*request*)

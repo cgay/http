@@ -55,7 +55,9 @@ end;
 
 // Respond to a request for the given resource.
 define open generic respond
-    (resource :: <abstract-resource>, #key, #all-keys);
+    (request :: <request>, response :: <response>, resource :: <abstract-resource>,
+     #key, #all-keys)
+ => ();
 
 
 // This method is called if the request URL has leftover path elements after
@@ -64,14 +66,14 @@ define open generic respond
 // to do this (at least during development or QA) so that incorrect URLs can
 // be discovered quickly.
 define open generic unmatched-url-suffix
-    (resource :: <abstract-resource>, unmatched-path :: <sequence>);
+    (request :: <request>, resource :: <abstract-resource>, unmatched-path :: <sequence>);
 
 define method unmatched-url-suffix
-    (resource :: <abstract-resource>, unmatched-path :: <sequence>)
+    (request :: <request>, resource :: <abstract-resource>, unmatched-path :: <sequence>)
   log-debug("Unmatched URL suffix for resource %s: %s",
             resource, unmatched-path);
-  %resource-not-found-error();
-end;
+  %resource-not-found-error(request);
+end method unmatched-url-suffix;
 
 
 // The content type that will be sent in the HTTP response if no
@@ -310,7 +312,7 @@ end;
 // Make a sequence of key/value pairs for passing to respond(resource, #key)
 //
 define method path-variable-bindings
-    (resource :: <resource>, path-suffix :: <list>)
+    (request :: <request>, resource :: <resource>, path-suffix :: <list>)
  => (bindings :: <sequence>,
      unbound :: <sequence>,
      leftover-suffix :: <list>)
@@ -326,7 +328,7 @@ define method path-variable-bindings
         if (empty?(suffix))
           // TODO: It would be more helpful for debugging if this were part
           //       of the error message (only when server.debugging-enabled?).
-          %resource-not-found-error();
+          %resource-not-found-error(request);
         else
           add!(bindings, pvar.path-variable-name);
           add!(bindings, suffix);
@@ -335,7 +337,7 @@ define method path-variable-bindings
       <path-variable> =>
         let path-element = iff(empty?(suffix), #f, first(suffix));
         if (pvar.path-variable-required? & ~path-element)
-          %resource-not-found-error();
+          %resource-not-found-error(request);
         else
           add!(bindings, pvar.path-variable-name);
           add!(bindings, path-element);
@@ -435,7 +437,7 @@ define method add-resource-name
   else
     $named-resources[name] := resource;
   end;
-end;
+end method add-resource-name;
 
 define method generate-url
     (router :: <resource>, name :: <string>, #key)
@@ -478,21 +480,24 @@ end function resource-url-path;
 
 
 define inline function %respond
-    (resource :: <abstract-resource>, bindings) => ()
+    (request :: <request>, response :: <response>, resource :: <abstract-resource>, bindings)
+ => ()
   // Don't require every respond method to set the Content-Type header explicitly.
-  set-header(current-response(), "Content-Type", default-content-type(resource));
+  set-header(response, "Content-Type", default-content-type(resource));
   apply(respond, resource, bindings);
 end;
 
 define method respond
-    (resource :: <placeholder-resource>, #key)
-  %resource-not-found-error();
+    (request :: <request>, response :: <response>, resource :: <placeholder-resource>, #key)
+ => ()
+  %resource-not-found-error(request);
 end;
 
 // Default method dispatches to respond-to-<request-method> functions.
 define method respond
-    (resource :: <abstract-resource>, #rest args, #key)
-  let request :: <request> = current-request();
+    (request :: <request>, response :: <response>, resource :: <abstract-resource>,
+     #rest args, #key)
+ => ()
   let name :: <byte-string> = request.request-method.method-name;
   let meth :: false-or(<http-method>) = element($request-methods, name, default: #f);
   if (meth)
@@ -502,7 +507,7 @@ define method respond
     // the resource.
     %method-not-allowed(name)
   end;
-end;
+end method respond;
 
 
 
@@ -519,9 +524,10 @@ define class <redirecting-resource> (<resource>)
 end;
 
 define method respond
-    (resource :: <redirecting-resource>, #key)
+    (request :: <request>, response :: <response>, resource :: <redirecting-resource>, #key)
+ => ()
   let target :: <uri> = resource.resource-target;
-  let suffix :: <string> = request-url-path-suffix(current-request());
+  let suffix :: <string> = request-url-path-suffix(request);
   if (suffix.size > 0 & suffix[0] = '/')
     suffix := copy-sequence(suffix, from: 1);
   end;
@@ -551,7 +557,7 @@ define open class <function-resource> (<resource>)
   constant slot resource-request-methods :: <sequence>,
     required-init-keyword: methods:;
 
-end;
+end class <function-resource>;
 
 // Turn a function into a resource.
 //
@@ -563,12 +569,14 @@ define function function-resource
 end function function-resource;
 
 define method respond
-    (resource :: <function-resource>, #rest path-bindings, #key)
-  if (member?(current-request().request-method,
+    (request :: <request>, response :: <response>, resource :: <function-resource>,
+     #rest path-bindings, #key)
+ => ()
+  if (member?(request.request-method,
               resource.resource-request-methods))
     apply(resource.resource-function, path-bindings);
   end;
-end;
+end method respond;
 
 
 //// server-send events resources (http://dev.w3.org/html5/eventsource/)
@@ -580,7 +588,7 @@ define open class <sse-resource> (<resource>)
   constant slot sse-queue-lock :: <lock> = make(<simple-lock>);
   slot sse-queue-notification :: <notification>;
   constant slot sse-clients :: <stretchy-vector> = make(<stretchy-vector>);
-end;
+end class <sse-resource>;
 
 define method initialize (sse :: <sse-resource>,
                           #next next-method,
@@ -589,7 +597,7 @@ define method initialize (sse :: <sse-resource>,
   next-method();
   sse.sse-queue-notification := make(<notification>, lock: sse.sse-queue-lock);
   make(<thread>, function: curry(broadcast-stream, sse))
-end;
+end method initialize;
 
 define function sse-push-event (sse :: <sse-resource>, data)
   let queue = sse.sse-queue;
@@ -601,8 +609,7 @@ define function sse-push-event (sse :: <sse-resource>, data)
     end;
     push-last(queue, data);
   end;
-end;
-
+end function sse-push-event;
 
 define function broadcast-stream (sse :: <sse-resource>)
   while (#t)
@@ -622,13 +629,13 @@ define function broadcast-stream (sse :: <sse-resource>)
       end;
     end with-lock
   end while
-end;
+end function broadcast-stream;
 
 define method respond
-    (resource :: <sse-resource>, #rest path-bindings, #key)
-  let req = current-request();
-  let socket = req.request-socket;
-  let response = current-response();
+    (request :: <request>, response :: <response>, resource :: <sse-resource>,
+     #rest path-bindings, #key)
+ => ()
+  let socket = request.request-socket;
 
   set-header(response, "Content-Type", "text/event-stream");
   set-header(response, "Cache-Control", "no-cache");
@@ -637,5 +644,4 @@ define method respond
   send-headers(response, socket);
   force-output(socket);
   add!(resource.sse-clients, socket);
-end;
-
+end method respond;

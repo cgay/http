@@ -3,11 +3,11 @@ Module: web60-dynamic-content
 define class <clock-page> (<resource>)
 end;
 
-define method respond (page :: <clock-page>, #key)
-  let stream = current-response();
-  set-header(stream, "Content-Type", "text/html");
+define method respond
+    (page :: <clock-page>, request :: <request>, response :: <response>, #key)
+  set-header(response, "Content-Type", "text/html");
   let date = as-iso8601-string(current-date());
-  write(stream, concatenate("<html><body>", date, "</body></html>"));
+  write(response, concatenate("<html><body>", date, "</body></html>"));
 end;
 
 let server = make(<http-server>,

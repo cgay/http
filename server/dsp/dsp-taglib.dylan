@@ -41,16 +41,17 @@ end;
 //// Tags
 
 define tag url in dsp
-    (page :: <dylan-server-page>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>)
     (name :: <string>, include-query :: <boolean>)
   // TODO: include-query
-  output(generate-url(current-server(), name));
+  output(response, generate-url(current-server(), name));
 end;
 
 // This is for comments that you don't want to be seen by the user,
 // whereas HTML comments (<!-- ... -->) will be seen.
 define body tag comment in dsp
-    (page :: <dylan-server-page>, do-body :: <function>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>,
+     do-body :: <function>)
     ()
   // don't call do-body
 end;
@@ -76,17 +77,17 @@ end;
 // raw="true" means don't escape HTML special characters.
 //
 define tag get in dsp
-    (page :: <dylan-server-page>)
+    (request :: <request>, response :: <resource>, page :: <dylan-server-page>)
     (name :: <string>, context, tag, raw :: <boolean>)
-  let value = get-context-value(name, context, tag: tag);
+  let value = get-context-value(request, name, context, tag: tag);
   if (found?(value))
     let string = sformat("%s", value);
-    output("%s", iff(raw, string, quote-html(string)));
+    output(response, "%s", iff(raw, string, quote-html(string)));
   end;
 end tag get;
 
 define method get-context-value
-    (name :: <string>, context :: false-or(<string>), #key tag)
+    (request :: <request>, name :: <string>, context :: false-or(<string>), #key tag)
  => (value :: <object>)
   let name = strip(name);
   local method get-context-value-internal ()
@@ -99,14 +100,13 @@ define method get-context-value
             let v = get-attribute(page-context(), name, default: $unfound);
             found?(v) & return(v);
           request: =>
-            let v = get-query-value(name);
+            let v = get-query-value(request, name);
             v & return(v);
           headers: =>
-            let v = get-header(current-request(), name);
+            let v = get-header(request, name);
             v & return(v);
           session: =>
-            let v = get-attribute(get-session(current-request()), name,
-                                  default: $unfound);
+            let v = get-attribute(get-session(request), name, default: $unfound);
             found?(v) & return(v);
           field-errors: =>
             let errors = get-field-errors(name);
@@ -177,7 +177,8 @@ define thread variable *if-tag-test-result* = #"unbound";
 // </dsp:if>
 //
 define body tag \if in dsp
-    (page :: <dylan-server-page>, do-body :: <function>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>,
+     do-body :: <function>)
     (test :: <named-method>)
   dynamic-bind (*if-tag-test-result* = test(page))
     // always process the body since there may be HTML outside the dsp:then
@@ -187,7 +188,8 @@ define body tag \if in dsp
 end;
 
 define body tag \then in dsp
-    (page :: <dylan-server-page>, do-body :: <function>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>,
+     do-body :: <function>)
     ()
   when (*if-tag-test-result* & (*if-tag-test-result* ~= #"unbound"))
     do-body();
@@ -195,7 +197,8 @@ define body tag \then in dsp
 end;
 
 define body tag \else in dsp
-    (page :: <dylan-server-page>, do-body :: <function>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>,
+     do-body :: <function>)
     ()
   unless (*if-tag-test-result*)
     do-body();
@@ -207,7 +210,8 @@ end;
 // </dsp:when>
 //
 define body tag \when in dsp
-    (page :: <dylan-server-page>, do-body :: <function>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>,
+     do-body :: <function>)
     (test :: <named-method>)
   when (test(page))
     do-body();
@@ -219,7 +223,8 @@ end;
 // </dsp:unless>
 //
 define body tag \unless in dsp
-    (page :: <dylan-server-page>, do-body :: <function>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>,
+     do-body :: <function>)
     (test :: <named-method>)
   unless (test(page))
     do-body();
@@ -240,20 +245,20 @@ end;
 // to see if the name exists in the given context.
 //
 define named-method exists? in dsp
-    (page :: <dylan-server-page>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>)
   let name = get-tag-call-attribute(#"name");
   if (name)
     let context = get-tag-call-attribute(#"context");
-    found?(get-context-value(name, context));
+    found?(get-context-value(request, name, context));
   end
 end named-method exists?;
 
 define named-method true? in dsp
-    (page :: <dylan-server-page>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>)
   let name = get-tag-call-attribute(#"name");
   if (name)
     let context = get-tag-call-attribute(#"context");
-    let value = get-context-value(name, context);
+    let value = get-context-value(request, name, context);
     if (found?(value))
       value ~= #f
     else
@@ -263,11 +268,11 @@ define named-method true? in dsp
 end named-method true?;
 
 define named-method false? in dsp
-    (page :: <dylan-server-page>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>)
   let name = get-tag-call-attribute(#"name");
   if (name)
     let context = get-tag-call-attribute(#"context");
-    let value = get-context-value(name, context);
+    let value = get-context-value(request, name, context);
     if (found?(value))
       value = #f
     else
@@ -277,27 +282,30 @@ define named-method false? in dsp
 end named-method false?;
 
 define body tag if-equal in dsp
-    (page :: <dylan-server-page>, do-body :: <function>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>,
+     do-body :: <function>)
     (name1 :: <string>, context1,
      name2 :: <string>, context2)
-  if-equal-internal(page, do-body, name1, context1, name2, context2);
+  if-equal-internal(request, response, page, do-body, name1, context1, name2, context2);
 end;
 
 define body tag if-not-equal in dsp
-    (page :: <dylan-server-page>, do-body :: <function>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>,
+     do-body :: <function>)
     (name1 :: <string>, context1,
      name2 :: <string>, context2)
-  if-equal-internal(page, do-body, name1, context1, name2, context2,
+  if-equal-internal(request, response, page, do-body, name1, context1, name2, context2,
                     negate: #t);
 end;
 
 define method if-equal-internal
-    (page :: <dylan-server-page>, do-body :: <function>,
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>,
+     do-body :: <function>,
      name1 :: <string>, context1,
      name2 :: <string>, context2,
      #key negate :: <boolean>)
-  let item1 = get-context-value(name1, context1);
-  let item2 = get-context-value(name2, context2);
+  let item1 = get-context-value(request, name1, context1);
+  let item2 = get-context-value(request, name2, context2);
   if (~found?(item1))
     context-value-not-found-error(name1, context1);
   end;
@@ -381,11 +389,12 @@ define method loop-value ()
 end;
 
 define body tag loop in dsp
-    (page :: <dylan-server-page>, do-body :: <function>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>,
+     do-body :: <function>)
     (over :: <string>, context, var, header, footer, empty)
   let items :: <collection>
     = if (context)
-        let value = get-context-value(over, context);
+        let value = get-context-value(request, over, context);
         iff(found?(value), value, #[])
       else
         block ()
@@ -398,7 +407,7 @@ define body tag loop in dsp
   let pc = page-context();
   let saved-val = get-attribute(pc, var, default: $unfound);
   if (empty?(items))
-    output("%s", empty | "");
+    output(response, "%s", empty | "");
   else
     for (item in items, i from 1)
       dynamic-bind (*loop-value* = item,
@@ -409,13 +418,13 @@ define body tag loop in dsp
           set-attribute(pc, var, *loop-value*);
         end;
         if (header & *loop-start?*)
-          output("%s", header);
+          output(response, "%s", header);
         end;
 
         do-body();
 
         if (footer & *loop-end?*)
-          output("%s", footer);
+          output(response, "%s", footer);
         end;
       end;
     end for;
@@ -429,11 +438,11 @@ define body tag loop in dsp
 end tag loop;
 
 define tag loop-index in dsp
-    (page :: <dylan-server-page>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>)
     ()
   // *loop-index* starts at 1.
   if (*loop-index*)
-    output("%d", *loop-index*);
+    output(response, "%d", *loop-index*);
   end;
 end;
 
@@ -457,9 +466,9 @@ define function current-row () *table-row-data* end;
 define function current-row-number () *table-row-number* end;
 
 define body tag table in dsp
-    (page :: <dylan-server-page>, do-body :: <function>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>, 
+     do-body :: <function>)
     (generator :: <named-method>)
-  let response = current-response();
   write(response, "<table");
   show-tag-call-attributes(response, exclude: #[#"generator"]);
   write(response, ">\n");
@@ -489,47 +498,51 @@ define body tag table in dsp
 end;
 
 define body tag hrow in dsp
-    (page :: <dylan-server-page>, do-body :: <function>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>,
+     do-body :: <function>)
     ()
   when (*table-first-row?*)
-    let response = current-response();
     show-element(response, "tr", body: do-body);
   end;
 end;
 
 define body tag row in dsp
-    (page :: <dylan-server-page>, do-body :: <function>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>,
+     do-body :: <function>)
     ()
   when (*table-has-rows?*)
-    show-element(current-response(), "tr", body: do-body);
+    show-element(response, "tr", body: do-body);
   end;
 end;
 
 define body tag hcell in dsp
-    (page :: <dylan-server-page>, do-body :: <function>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>,
+     do-body :: <function>)
     ()
-  show-element(current-response(), "td", body: do-body);
+  show-element(response, "td", body: do-body);
 end;
 
 define body tag cell in dsp
-    (page :: <dylan-server-page>, do-body :: <function>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>,
+     do-body :: <function>)
     ()
-  show-element(current-response(), "td", body: do-body);
+  show-element(response, "td", body: do-body);
 end;
 
 define body tag no-rows in dsp
-    (page :: <dylan-server-page>, do-body :: <function>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>,
+     do-body :: <function>)
     ()
   when (~ *table-has-rows?*)
-    show-element(current-response(), "tr", body: do-body);
+    show-element(response, "tr", body: do-body);
   end;
 end;
 
 define tag row-number in dsp
-    (page :: <dylan-server-page>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>,)
     ()
   when (*table-row-number* >= 0)
-    output("%d", *table-row-number* + 1);
+    output(response, "%d", *table-row-number* + 1);
   end;
 end;
 
@@ -551,7 +564,7 @@ define tag input in dsp
   end;
   // Output a normal <input> element, but fill in the "value" attribute
   // if not explicitly provided in the tag.
-  show-element(output-stream(current-response()), "input",
+  show-element(output-stream(response), "input",
                attributes: make-table(value: => value | get-query-value(name),
                                       class: => class));
 end;
@@ -567,10 +580,10 @@ end;
 // @see parse-tag-arg(<string>, <date>)
 //
 define tag show-date in dsp
-    (page :: <dylan-server-page>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>)
     (date :: <date> = current-date(), format, key, scope)
   //---TODO: Finish this.  For now it can only show the current date.
-  write(current-response(), as-iso8601-string(date));
+  write(response, as-iso8601-string(date));
 end;
 
 //// Form Field Errors
@@ -632,7 +645,7 @@ end;
 // <dsp:show-field-errors field-name="field1,field2,..." tag="span"/>
 //
 define tag show-field-errors in dsp
-    (page :: <dylan-server-page>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>)
     (field-name :: <string>, tag = "div")
   let error-table = get-attribute(page-context(), $field-errors-key);
   when (error-table)
@@ -642,17 +655,18 @@ define tag show-field-errors in dsp
                                           test: method (n1, n2)
                                                   n1.note-text = n2.note-text
                                                 end);
-    output("%s", format-field-errors(field-errors, tag));
+    output(response, "%s", format-field-errors(field-errors, tag));
   end;
 end tag show-field-errors;
 
 define body tag if-error in dsp
-    (page :: <dylan-server-page>, do-body :: <function>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>,
+     do-body :: <function>)
     (field-name :: <string>, text :: false-or(<string>))
   let field-errors = get-field-errors(field-name);
   if (~empty?(field-errors))
     if (text)
-      output("%s", text);
+      output(response, "%s", text);
     end;
     do-body();
   end;
@@ -684,7 +698,7 @@ define method validate-form-field
      #key trim: trim? = #t, decode = #t, error-if-empty,
           as: as-type :: false-or(<type>))
  => (validator-values-or-field-value-on-error)
-  let field-value = get-query-value(field-name, as: as-type) | "";
+  let field-value = get-query-value(request, field-name, as: as-type) | "";
   if (decode)
     field-value := percent-decode(field-value);
   end;
@@ -736,23 +750,23 @@ define method add-page-note-internal
 end method add-page-note-internal;
 
 define named-method page-errors?
-    (page :: <dylan-server-page>)
+    (page :: <dylan-server-page>, request :: <request>, response :: <response>)
   get-attribute(page-context(), $page-errors-key)
 end;
 
 define named-method page-notes?
-    (page :: <dylan-server-page>)
+    (page :: <dylan-server-page>, request :: <request>, response :: <response>)
   get-attribute(page-context(), $page-notes-key)
 end;
 
 define tag show-page-notes in dsp
-    (page :: <dylan-server-page>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>)
     ()
   show-page-notes-internal($page-notes-key, "page-note");
 end;
 
 define tag show-page-errors in dsp
-    (page :: <dylan-server-page>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>)
     ()
   show-page-notes-internal($page-errors-key, "page-error");
 end;
@@ -762,11 +776,11 @@ define method show-page-notes-internal
   let notes = get-attribute(page-context(), key);
   if (notes)
     // Note the 's' added to the end of the class name in the outer div.  :-/
-    output("<div class=\"%ss\">", css-class);
+    output(response, "<div class=\"%ss\">", css-class);
     for (note in notes)
-      output("<div class=\"%s\">%s</div>", css-class, note.note-text);
+      output(response, "<div class=\"%s\">%s</div>", css-class, note.note-text);
     end;
-    output("</div>")
+    output(response, "</div>")
   end;
 end method show-page-notes-internal;
 
@@ -785,13 +799,13 @@ end;
 //// Debug tags
 
 define tag show-query-values in dsp
-    (page :: <dylan-server-page>)
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>)
     ()
-  output("<ul>\n");
-  for (value keyed-by name in request-query-values(current-request()))
-    output("<li>%s: %s</li>\n", name, quote-html(value));
+  output(response, "<ul>\n");
+  for (value keyed-by name in request-query-values(request))
+    output(response, "<li>%s: %s</li>\n", name, quote-html(value));
   end;
-  output("</ul>\n");
+  output(response, "</ul>\n");
 end tag show-query-values;
 
 

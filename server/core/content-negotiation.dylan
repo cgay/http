@@ -60,6 +60,7 @@ end;
 //
 define method find-multi-view-file
     (policy :: <directory-resource>, document :: <file-locator>,
+     request :: <request>,
      #key accept-header)
  => (locator :: false-or(<file-locator>))
   // Upon entry to this function, 'document' is known not to name
@@ -68,7 +69,7 @@ define method find-multi-view-file
     let locators = locators-matching(document);
     if (locators.size > 0)
       let accept-header :: false-or(<list>)
-        = accept-header | get-header(current-request(), "Accept", parsed: #t);
+        = accept-header | get-header(request, "Accept", parsed: #t);
       local method make-variant (locator)
               let doc-mtype = locator-media-type(locator, policy);
               let hdr-mtype

@@ -23,5 +23,7 @@ common-test:
 server-test:
 	dylan-compiler -build http-server-test-suite-app
 
+tests: client-test protocol-test server-test
+
 clean:
 	rm -rf _build

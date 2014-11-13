@@ -204,7 +204,7 @@ define method process-config-element
   if (name)
     let name = as-lowercase(name);
     if (find-virtual-host(server, name))
-      warn("Replacing existing virtual host named %=.", name);
+      warn("Virtual host %= being redefined.", name);
     end;
     let vhost :: <virtual-host> = make(<virtual-host>);
     add-virtual-host(server, name, vhost);

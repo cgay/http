@@ -7,8 +7,9 @@ define class <plaintext-page> (<resource>)
 end class;
 
 // set the correct content-type, then send "Hello, World!".
-define method respond (page :: <plaintext-page>, #key)
-  set-header(current-response(), "Content-Type", "text/plain");
+define method respond
+    (page :: <plaintext-page>, request :: <request>, response :: <response>, #key)
+  set-header(response, "Content-Type", "text/plain");
   output(page.hello-string);
 end method respond;
 

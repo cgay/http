@@ -48,11 +48,13 @@ define macro http-method-definer
              ?adjectives);
 
     define open generic "respond-to-" ## ?name
-        (resource :: <abstract-resource>, #key, #all-keys)
+        (request :: <request>, response :: <response>, resource :: <abstract-resource>,
+         #key, #all-keys)
      => ();
 
     define method "respond-to-" ## ?name
-        (resource :: <abstract-resource>, #key) => ()
+        (request :: <request>, response :: <response>, resource :: <abstract-resource>, #key)
+     => ()
       %method-not-allowed(uppercase(?"name"));
     end;
 

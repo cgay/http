@@ -73,12 +73,12 @@ define method page-source
 end;
 
 define method respond-to-post
-    (page :: <dylan-server-page>, #key) => ()
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>, #key) => ()
   process-template(page);
 end;
 
 define method respond-to-get
-    (page :: <dylan-server-page>, #key) => ()
+    (request :: <request>, response :: <response>, page :: <dylan-server-page>, #key) => ()
   process-template(page);
 end;
 
@@ -151,11 +151,12 @@ define macro taglib-definer
     // not display the body (if there is one), which might be very hard to debug, or
     // to make the user remember to deal with the body in each tag.
 
-    { tag ?tag:name (?page:variable)
+    { tag ?tag:name (?request:variable, ?response:variable, ?page:variable)
           (?tag-parameters:*)
         ?:body ;
       ... }
-      => { local method ?tag ## "-tag" (?page, _do-body, #key ?tag-parameters, #all-keys)
+      => { local method ?tag ## "-tag" (?request, ?response, ?page, _do-body,
+                                        #key ?tag-parameters, #all-keys)
                    ?body;
                    _do-body();  // process the tag body, if any, exactly once
                  end;
@@ -167,11 +168,13 @@ define macro taglib-definer
                              parameter-types: snarf-tag-parameter-types(?tag-parameters)),
                         _taglib);
            ... }
-    { body tag ?tag:name (?page:variable, ?do-body:variable)
+    { body tag ?tag:name (?request:variable, ?response:variable, ?page:variable,
+                          ?do-body:variable)
           (?tag-parameters:*)
         ?:body ;
       ... }
-      => { local method ?tag ## "-tag" (?page, ?do-body, #key ?tag-parameters, #all-keys)
+      => { local method ?tag ## "-tag" (?request, ?response, ?page, ?do-body,
+                                        #key ?tag-parameters, #all-keys)
                    ?body
                  end;
            register-tag(make(<tag>,
@@ -194,21 +197,22 @@ define macro tag-definer
   // not display the body (if there is one), which might be very hard to debug, or
   // to make the user remember to deal with the body in each tag.
   { define tag ?tag:name ?taglib-spec
-        (?page:variable) (?tag-parameters:*)
+        (?request:variable, ?response:variable, ?page:variable) (?tag-parameters:*)
       ?:body
     end }
   => { define tag-aux #f ?tag ?taglib-spec
-           (?page, _do-body) (?tag-parameters)
+           (?request, ?response, ?page, _do-body) (?tag-parameters)
          ?body;       // semicolon is needed even when ?body ends in semicolon.
          _do-body();  // process the tag body
        end
      }
   { define body tag ?tag:name ?taglib-spec
-        (?page:variable, ?do-body:variable) (?tag-parameters:*)
+        (?request:variable, ?response:variable, ?page:variable, ?do-body:variable)
+        (?tag-parameters:*)
       ?:body
     end }
   => { define tag-aux #t ?tag ?taglib-spec
-           (?page, ?do-body) (?tag-parameters)
+           (?request, ?response, ?page, ?do-body) (?tag-parameters)
          ?body
        end
      }
@@ -222,11 +226,12 @@ end macro tag-definer;
 
 define macro tag-aux-definer
   { define tag-aux ?allow-body:expression ?tag:name ?taglib:name
-        (?page:variable, ?do-body:variable)
+        (?request:variable, ?response:variable, ?page:variable, ?do-body:variable)
         (?tag-parameters:*)
       ?:body
     end }
-  => { define method ?tag ## "-tag" (?page, ?do-body, #key ?tag-parameters, #all-keys)
+  => { define method ?tag ## "-tag" (?request, ?response, ?page, ?do-body,
+                                     #key ?tag-parameters, #all-keys)
          ?body
        end;
        register-tag(make(<tag>,
@@ -318,12 +323,13 @@ define constant $%dsp-taglib :: <taglib> = find-taglib("%dsp");
 
 define taglib dsp ()
   body tag %%placeholder-for-unparsable-tags
-      (page :: <dylan-server-page>, process-body :: <function>)
+      (request :: <request>, response :: <response>, page :: <dylan-server-page>,
+       process-body :: <function>)
       ()
     // TODO: allow user to configure whether this output is displayed.
     //       e.g., you don't want it in a production setting.
     begin
-      output(" TAG PARSE ERROR ");
+      output(response, " TAG PARSE ERROR ");
       process-body();
     end;
 end taglib dsp;
@@ -691,7 +697,7 @@ define method display-template
   for (item in tmplt.entries)
     select (item by instance?)
       <string>
-        => write(current-response(), item);
+        => write(response, item);
       // A subtemplate is created for tag bodies and for the "include" directive.
       <dsp-template>
         => display-template(item, page);

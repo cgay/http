@@ -394,9 +394,9 @@ end method extract-form-data;
 // Hey look!  More stuff to get rid of or move...
 
 define inline function get-query-value
-    (key :: <string>, #key as: as-type :: false-or(<type>))
+    (request :: <request>, key :: <string>, #key as: as-type :: false-or(<type>))
  => (value :: <object>)
-  let val = element(*request*.request-query-values, key, default: #f);
+  let val = element(request.request-query-values, key, default: #f);
   if (as-type & val)
     as(as-type, val)
   else
@@ -407,7 +407,7 @@ end function get-query-value;
 // with-query-values (name, type, go as go?, search) x end;
 //   
 define macro with-query-values
-    { with-query-values (?bindings) ?:body end }
+    { with-query-values (?request:expression, ?bindings) ?:body end }
  => { ?bindings;
       ?body }
 
@@ -416,19 +416,19 @@ define macro with-query-values
    { ?binding, ... } => { ?binding; ... }
 
  binding:
-   { ?:name } => { let ?name = get-query-value(?"name") }
-   { ?:name as ?var:name } => { let ?var = get-query-value(?"name") }
-end;
+   { ?:name } => { let ?name = get-query-value(request, ?"name") }
+   { ?:name as ?var:name } => { let ?var = get-query-value(request, ?"name") }
+end macro with-query-values;
 
 define function count-query-values
-    () => (count :: <integer>)
-  *request*.request-query-values.size
+    (request :: <request>) => (count :: <integer>)
+  request.request-query-values.size
 end;
 
 define method do-query-values
-    (f :: <function>)
-  for (val keyed-by key in *request*.request-query-values)
-    f(key, val);
+    (request :: <request>, fn :: <function>)
+  for (val keyed-by key in request.request-query-values)
+    fn(key, val);
   end;
-end;
+end method do-query-values;
 

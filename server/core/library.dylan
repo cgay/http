@@ -53,7 +53,6 @@ define module http-server
   create
     // See also: the methods for requests in http-common
     <request>,
-    current-request,             // Returns the active request of the thread.
     request-method,
     request-content-type,
     request-host,
@@ -157,7 +156,6 @@ define module http-server
   create
     <response>,
     // See also: methods on <base-http-response> in common-dylan.
-    current-response,            // Returns the active response of the thread.
     response-headers,
     output,
     add-cookie;
