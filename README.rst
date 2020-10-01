@@ -6,6 +6,23 @@ HTTP server, client, tests, and examples.  All required repositories
 are included as submodules so if you clone with --recursive you should
 have everything you need for building.
 
+Build
+=====
+
+The easiest way to build everything except for the examples is::
+
+  dylan-compiler -build http-test-suite
+
+Test
+====
+
+Run all tests::
+
+  $ dylan-compiler -build http-test-suite
+  $ dylan-compiler -build testworks-run
+  $ _build/bin/testworks-run --load libhttp-test-suite.so
+
+Currently (Fall 2020) the tests hang.
 
 Documentation
 =============

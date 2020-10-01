@@ -60,13 +60,6 @@ define test conflicting-listener-ips-test ()
   end;
 end test conflicting-listener-ips-test;
 
-define suite start-stop-test-suite ()
-  test start-stop-basic-test;
-  test repeated-start-stop-test;
-  test test-repeated-start-stop-with-connection;
-  test conflicting-listener-ips-test;
-end suite start-stop-test-suite;
-
 // Test that the server can handle the "Transfer-encoding: chunked" header
 // by setting the outgoing-chunk-size of the client's connection.
 //
@@ -91,18 +84,3 @@ define test chunked-request-test ()
     end;
   end;
 end test chunked-request-test;
-
-define suite chunking-test-suite ()
-  test chunked-request-test;
-end;
-
-define suite http-server-test-suite ()
-  suite start-stop-test-suite;
-  suite chunking-test-suite;
-  suite configuration-test-suite;
-  suite multi-views-test-suite;
-  suite resources-test-suite;
-  suite rewrite-rules-test-suite;
-  suite virtual-host-test-suite;
-  suite request-test-suite;
-end;

@@ -16,6 +16,5 @@ define module http-common-test-suite
   use http-common-internals;
   use testworks;
   use format;
-  export http-common-test-suite;
 end;
 

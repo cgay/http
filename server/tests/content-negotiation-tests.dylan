@@ -106,10 +106,3 @@ define test test-find-multi-view-file ()
     end;
   end block;
 end test test-find-multi-view-file;
-
-define suite multi-views-test-suite ()
-  test test-media-type-from-header;
-  test test-locators-matching;
-  test test-document-variant;
-  test test-find-multi-view-file;
-end;

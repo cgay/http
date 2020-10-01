@@ -96,13 +96,6 @@ define test test-add-resource-path-variables ()
                   add-resource(root, "b/{x}/{y}/", child));
 end test test-add-resource-path-variables;
 
-define suite add-resource-test-suite ()
-    test test-add-resource-basics;
-    test test-add-resource-precedence;
-    test test-add-resource-parent;
-    test test-add-resource-path-variables;
-end;
-
 
 //// One-off tests, directly in add-resource-test-suite
 
@@ -203,16 +196,3 @@ define test test-path-variable-binding ()
     end for;
   end with-http-server;
 end test test-path-variable-binding;
-
-
-define suite path-variable-test-suite ()
-  test test-path-variable-binding;
-  test test-parse-path-variable;
-end;
-
-
-define suite resources-test-suite ()
-  suite add-resource-test-suite;
-  suite path-variable-test-suite;
-  test test-find-resource;
-end;

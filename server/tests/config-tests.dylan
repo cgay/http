@@ -127,19 +127,3 @@ define test test-directory-resource-default-documents ()
                    as(<file-locator>, "two")),
               resource.default-documents);
 end test test-directory-resource-default-documents;
-
-define suite directory-resource-test-suite ()
-  test test-directory-resource;
-  test test-directory-resource-default-documents;
-end;
-
-
-
-define suite configuration-test-suite ()
-  test basic-config-test;
-  test listener-config-test;
-  test alias-config-test;
-  suite directory-resource-test-suite;
-end suite configuration-test-suite;
-
-

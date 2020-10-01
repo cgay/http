@@ -18,10 +18,6 @@ define test test-quality-value ()
   end;
 end test test-quality-value;
 
-define suite parsing-test-suite ()
-  test test-quality-value;
-end;
-
 
 //// --- headers test suite ---
 
@@ -33,10 +29,6 @@ define test test-accept-header ()
                    make-media-type("audio", "mp3", #["q", 1.0])),
               parse-header-value(#"accept", raw-header));
 end test test-accept-header;
-
-define suite headers-test-suite ()
-  test test-accept-header;
-end;
 
 
 //// --- media-type test suite ---
@@ -168,21 +160,3 @@ define test test-media-type-level ()
               make-media-type("a", "b", #["level", 2]).media-type-level);
   check-false("Default level is #f?", make-media-type("a", "b").media-type-level);
 end test test-media-type-level;
-
-define suite media-type-test-suite ()
-  test test-parse-media-type;
-  test test-media-type-quality;
-  test test-media-type-level;
-  test test-media-type-exact?;
-  test test-media-type-more-specific?;
-  test test-match-media-types;
-end suite media-type-test-suite;
-
-
-//// --- top level suite ---
-
-define suite http-common-test-suite ()
-  suite parsing-test-suite;
-  suite headers-test-suite;
-  suite media-type-test-suite;
-end;

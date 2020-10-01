@@ -265,33 +265,3 @@ define test test-redirect-loop-detection ()
                    "Infinite redirect loop signals <redirect-loop-detected>");
   end;
 end test test-redirect-loop-detection;
-
-define suite http-client-test-suite ()
-  test test-http-get-to-string;
-  test test-http-get-to-stream;
-  test test-http-get-no-path;
-  test test-encode-form-data;
-  test test-with-http-connection;
-  test test-http-connections;
-  test test-reuse-http-connection;
-  test test-streaming-request;
-  test test-streaming-response;
-
-  test test-write-chunked-request;
-  test test-read-chunked-response;
-  test test-non-chunked-request;
-  test test-non-chunked-response;
-  test test-resource-not-found-error;
-  test test-invalid-response-chunk-sizes;
-  test test-invalid-response-content-lengths;
-  test test-invalid-request-content-lengths;
-
-  test test-read-from-response-after-done;
-
-  test test-follow-redirects;
-  test test-redirect-loop-detection;
-
-  test test-convert-headers-method;
-
-  // TODO: test the reaction to server errors
-end suite http-client-test-suite;

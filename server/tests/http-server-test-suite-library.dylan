@@ -32,8 +32,7 @@ define library http-server-test-suite
   use testworks;
   use uri;
 
-  export
-    http-server-test-suite;
+  export http-server-test-suite;
 end library http-server-test-suite;
 
 define module http-server-test-suite
@@ -69,6 +68,4 @@ define module http-server-test-suite
   use testworks;
   use threads;
   use uri;
-
-  export http-server-test-suite;
 end module http-server-test-suite;

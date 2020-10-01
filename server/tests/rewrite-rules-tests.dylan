@@ -54,9 +54,3 @@ define test test-rewrite-rule-chaining ()
               "aaa123bbb",
               rewrite-url("abc123", rules));
 end test test-rewrite-rule-chaining;
-
-define suite rewrite-rules-test-suite ()
-  test test-parse-replacement;
-  test test-rewrite-one-url;
-  test test-rewrite-rule-chaining;
-end;

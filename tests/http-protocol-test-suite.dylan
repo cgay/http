@@ -105,18 +105,6 @@ define test test-connect-method ()
   // Not implemented by httpbin
 end test test-connect-method;
 
-define suite method-test-suite ()
-  test test-options-method;
-  test test-get-method;
-  test test-get-method-allow-redirect;
-  test test-post-method;
-  test test-head-method;
-  test test-put-method;
-  test test-delete-method;
-  test test-trace-method;
-  test test-connect-method;
-end;
-
 
 define test test-date-header-parsing ()
   // RFC 2616 - 3.3.1
@@ -138,10 +126,6 @@ define test test-date-header-parsing ()
   end;
 end test test-date-header-parsing;
 
-define suite header-test-suite ()
-  test test-date-header-parsing;
-end suite header-test-suite;
-
 
 define test test-cookies ()
 end test test-cookies;
@@ -152,16 +136,3 @@ end test test-cookies-on-301;
 define test test-cookies-on-redirect ()
   // This test requires a class to persist status between requests (session?)
 end test test-cookies-on-redirect;
-
-define suite cookies-test-suite ()
-  test test-cookies;
-  test test-cookies-on-301;
-  test test-cookies-on-redirect;
-end suite cookies-test-suite;
-
-
-define suite http-protocol-test-suite ()
-  suite method-test-suite;
-  suite header-test-suite;
-  suite cookies-test-suite;
-end suite http-protocol-test-suite;
