@@ -1,0 +1,13 @@
+{
+    "name": "http",
+    "deps": [ "base64 head",
+              "concurrency head",
+              "logging head",
+              "meta head",
+              "mime head",
+              "serialization head",
+              "sphinx-extensions head",
+              "uri head",
+              "xml-parser head"],
+    "location": "https://github.com/cgay/http"
+}

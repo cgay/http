@@ -2,27 +2,28 @@
 HTTP Libraries
 **************
 
-HTTP server, client, tests, and examples.  All required repositories
-are included as submodules so if you clone with --recursive you should
-have everything you need for building.
+HTTP server, client, tests, and examples.
 
-Build
+Usage
 =====
 
-The easiest way to build everything except for the examples is::
+Install `dylan-tool <https://github.com/cgay/dylan-tool>`_ if you haven't
+already.
 
-  dylan-compiler -build http-test-suite
+1.  Create a new workspace with ``dylan-tool new my-workspace http`` and then
+    ``cd my-workspace``.
 
-Test
-====
+3.  Run ``dylan-tool update`` to install dependencies and generate a registry.
 
-Run all tests::
+4.  Build everything (except the examples) with ``dylan-compiler -build
+    http-test-suite``.
 
-  $ dylan-compiler -build http-test-suite
-  $ dylan-compiler -build testworks-run
-  $ _build/bin/testworks-run --load libhttp-test-suite.so
+5.  Optionally run all the tests::
 
-Currently (Fall 2020) the tests hang.
+      $ dylan-compiler -build testworks-run
+      $ _build/bin/testworks-run --load libhttp-test-suite.so
+
+    (Currently, as of Fall 2020, the tests hang. So there's that.)
 
 Documentation
 =============
