@@ -558,15 +558,14 @@ define function listener-top-level
   end;
 end function listener-top-level;
 
-//---TODO: need to set up timeouts.
-//---TODO: need to limit the number of outstanding clients.
-//---TODO: need to be able to stop the server from outside.
+// Listen and spawn handlers until listener socket breaks.
+//
+//---TODO: set up timeouts.
+//---TODO: limit the number of outstanding clients.
+//---TODO: add ability to stop the server from outside.
 // Can't do anything to the thread, but can do things to the server socket
 // so that it will return from 'accept' with some error, which we should
 // catch gracefully..
-//---TODO: need to handle errors.
-// Listen and spawn handlers until listener socket breaks.
-//
 define function do-http-listen
     (server :: <http-server>, listener :: <listener>)
   let server-lock = server.server-lock;
@@ -586,7 +585,6 @@ define function do-http-listen
                  end;
     synchronize-side-effects();
     when (socket)
-      //---TODO: should limit number of clients.
       let client = #f;
       local method do-respond ()
               with-lock (server-lock) end;   // Wait for setup to finish.
@@ -594,26 +592,23 @@ define function do-http-listen
               respond-top-level(client);
             end method;
       with-lock (server-lock)
-        block()
-          if (listener.connections-accepted < $maximum-integer)
-            inc!(listener.connections-accepted);
-          end;
-          if (server.connections-accepted < $maximum-integer)
-            inc!(server.connections-accepted);
-          end;
-          executor-request(server.server-executor, do-respond);
-          client := make(<client>,
-                         server: server,
-                         listener: listener,
-                         socket: socket);
-          add!(server.server-clients, client);
-        exception (ex :: <thread-error>)
-          log-error("Thread error while making responder thread: %=", ex)
+        if (listener.connections-accepted < $maximum-integer)
+          inc!(listener.connections-accepted);
         end;
+        if (server.connections-accepted < $maximum-integer)
+          inc!(server.connections-accepted);
+        end;
+        executor-request(server.server-executor, do-respond);
+        client := make(<client>,
+                       server: server,
+                       listener: listener,
+                       socket: socket);
+        add!(server.server-clients, client);
       end;
       loop();
     end when;
   end iterate;
+  // Shutting down
   close(listener.listener-socket, abort: #t);
 end function do-http-listen;
 
