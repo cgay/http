@@ -600,12 +600,11 @@ The HTTP-SERVER module
 .. generic-function:: start-server
    :open:
 
-   :signature: start-server (server #key background wait) => (started?)
+   :signature: start-server (server #key background wait) => ()
 
    :parameter server: An instance of ``<http-server>``.
    :parameter #key background: An instance of ``<boolean>``.
    :parameter #key wait: An instance of ``<boolean>``.
-   :value started?: An instance of ``<boolean>``.
 
 .. generic-function:: stop-server
    :open:

@@ -364,25 +364,23 @@ define inline function current-server
   *server*
 end function current-server;
 
-// This is what client libraries call to start the server, which is
-// assumed to have been already configured via configure-server.
-// (Client applications might want to call http-server-main instead.)
-// Returns #f if there is an error during startup; otherwise #t.
-// If background is #t then run the server in a thread and return
-// immediately.  Otherwise wait until all listeners have shut down.
-// If wait is #t then don't return until all listeners are ready.
-// 
+// This is what client libraries call to start the server, which is assumed to
+// have been already configured via configure-server.  (Client applications may
+// call http-server-main instead, which has additional options.)  If background
+// is #t then run the server in a thread. If wait is #t then don't return until
+// all listeners are ready.
+//
 define open generic start-server
     (server :: <http-server>,
      #key background :: <boolean>,
           wait :: <boolean>)
- => (started? :: <boolean>);
+ => ();
 
 define method start-server
     (server :: <http-server>,
      #key background :: <boolean> = #f,
           wait :: <boolean> = #t)
- => (started? :: <boolean>)
+ => ()
   // Binding these to the default vhost logs here isn't quite right.
   // It means that log messages that don't pertain to a specific vhost
   // go in the default vhost logs.  Maybe have a separate log for the
@@ -412,8 +410,7 @@ define method start-server
       // Main thread has nothing to do but wait.
       join-listeners(server);
     end;
-    #t
-  end dynamic-bind
+  end dynamic-bind;
 end method start-server;
 
 define function wait-for-listeners-to-start
@@ -548,10 +545,7 @@ define function listener-top-level
   let restart? = with-lock (server.server-lock)
                    when (~*exiting-application* &
                          ~listener.listener-exit-requested?)
-                     listener.listener-socket
-                       := make(<server-socket>,
-                               host: listener.listener-host,
-                               port: listener.listener-port);
+                     listener.listener-socket := make-socket(listener);
                      inc!(listener.total-restarts);
                      #t
                    end;
