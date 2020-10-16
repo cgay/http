@@ -150,6 +150,13 @@ end method initialize;
 
 define sealed domain initialize (<http-server>);
 
+define thread variable *server* :: false-or(<http-server>) = #f;
+
+define inline function current-server
+    () => (server :: <http-server>)
+  *server*
+end function;
+
 
 //// Virtual hosts
 
@@ -237,7 +244,7 @@ end;
 
 define function release-client
     (client :: <client>)
-  let server = client.client-server;
+  let server :: <http-server> = *server*;
   with-lock (server.server-lock)
     remove!(server.server-clients, client);
     when (empty?(server.server-clients))
@@ -331,17 +338,17 @@ define method make-socket
                                    key: listener.key-filename)
 end;
 
+define thread variable *listener* :: false-or(<listener>) = #f;
 
+// Represents one user connection, i.e. socket, and gives easy access from that
+// to the server and listener.
 define class <client> (<object>)
-  constant slot client-server :: <http-server>,
-    required-init-keyword: server:;
-
-  constant slot client-listener :: <listener>,
-    required-init-keyword: listener:;
-
   constant slot client-socket :: <tcp-socket>,
     required-init-keyword: socket:;
 
+  // TODO(cgay): This was added for <sse-resource> and it's not clear to me why
+  // it doesn't use the normal Keep-Alive functionality or if it's doing
+  // something different. Need to take a closer look. Can we get rid of it?
   slot client-stays-alive? :: <boolean> = #f;
 end class <client>;
 
@@ -356,13 +363,6 @@ define function ensure-sockets-started ()
     *sockets-started?* := #t;
   end;
 end;
-
-define thread variable *server* :: false-or(<http-server>) = #f;
-
-define inline function current-server
-    () => (server :: <http-server>)
-  *server*
-end function current-server;
 
 // This is what client libraries call to start the server, which is assumed to
 // have been already configured via configure-server.  (Client applications may
@@ -589,7 +589,7 @@ define function do-http-listen
       local method do-respond ()
               with-lock (server-lock) end;   // Wait for setup to finish.
               let client :: <client> = client;
-              respond-top-level(client);
+              respond-top-level(server, listener, client);
             end method;
       with-lock (server-lock)
         if (listener.connections-accepted < $maximum-integer)
@@ -603,6 +603,8 @@ define function do-http-listen
                        server: server,
                        listener: listener,
                        socket: socket);
+        // The client is removed when the socket is closed, which depends on
+        // Keep-Alive.
         add!(server.server-clients, client);
       end;
       loop();
@@ -632,29 +634,32 @@ end;
 // connection.
 //
 define function respond-top-level
-    (client :: <client>)
-  block ()
-    with-socket-thread ()
-      %respond-top-level(client);
-    end;
-  cleanup
-    unless (client.client-stays-alive?)
-      block ()
-        close(client.client-socket, abort: #t);
-      exception (_ :: <socket-condition>)
+    (server :: <http-server>, listener :: <listener>, client :: <client>)
+ => ()
+  dynamic-bind (*server* = server,
+                *listener* = listener)
+    block ()
+      with-socket-thread ()
+        %respond-top-level(server, listener, client);
       end;
-      release-client(client);
+    cleanup
+      unless (client.client-stays-alive?)
+        block ()
+          close(client.client-socket, abort: #t);
+        exception (_ :: <socket-condition>)
+        end;
+        release-client(client);
+      end;
     end;
   end;
-end function respond-top-level;
+end function;
 
 define function %respond-top-level
-    (client :: <client>)
+    (server :: <http-server>, listener :: <listener>, client :: <client>)
   dynamic-bind (*request* = #f,
-                *server* = client.client-server,
-                *debug-log* = *server*.debug-log,
-                *error-log* = *server*.error-log,
-                *request-log* = *server*.request-log,
+                *debug-log* = server.debug-log,
+                *error-log* = server.error-log,
+                *request-log* = server.request-log,
                 *http-common-log* = *debug-log*)
     block (exit-respond-top-level)
       while (#t)                      // keep alive loop
@@ -679,19 +684,19 @@ define function %respond-top-level
             let handler <http-error> = rcurry(htl-error-handler, finish-request,
                                               decline-if-debugging: #f);
 
-            read-request(request);
+            read-request(server, request);
             let response = make(<response>, request: request);
             dynamic-bind (*response* = response,
                           // Bound to a <page-context> when first requested.
                           *page-context* = #f)
-              route-request(*server*, request);
+              route-request(server, request);
               unless (client.client-stays-alive?)
                 finish-response(*response*);
               end;
             end;
             force-output(request.request-socket);
           end block; // finish-request
-          if (client.client-listener.listener-exit-requested?
+          if (listener.listener-exit-requested?
               | ~request-keep-alive?(request))
             exit-respond-top-level();
           end;
@@ -762,7 +767,7 @@ define function send-error-response
   block (exit)
     let handler <error>
       = method (cond, next-handler)
-          if (debugging-enabled?(request.request-server))
+          if (debugging-enabled?(*server*))
             next-handler();
           else
             log-debug("An error occurred while sending error response. %s", cond);

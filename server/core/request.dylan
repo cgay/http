@@ -51,12 +51,6 @@ define inline function request-socket
   request.request-client.client-socket
 end;
 
-define inline function request-server
-    (request :: <request>)
- => (server :: <http-server>)
-  request.request-client.client-server
-end;
-
 // The request-url slot represents the URL in the Request-Line,
 // and may not be absolute.  This method gives client code a way
 // to get the whole thing.  (We assume scheme = HTTP for now.)
@@ -72,20 +66,18 @@ define method request-absolute-url
          scheme: "http",
          userinfo: url.uri-userinfo,
          host: request.request-host,
-         port: request.request-client.client-listener.listener-port,
+         port: *listener*.listener-port,
          path: url.uri-path,
          query: url.uri-query,
          fragment: url.uri-fragment)
   end
 end method request-absolute-url;
 
-// This method takes care of parsing the request headers and signalling any
+// This method takes care of parsing the request headers and signaling any
 // errors therein.
-//---TODO: have overall timeout for header reading.
 define method read-request
-    (request :: <request>) => ()
+    (server :: <http-server>, request :: <request>) => ()
   let socket = request.request-socket;
-  let server = request.request-server;
   let (buffer, len) = read-http-line(socket);
 
   // RFC 2616, 4.1 - "Servers SHOULD ignore an empty line(s) received where a
@@ -335,7 +327,7 @@ define method process-incoming-headers
   if (member?("close", conn-values, test: string-equal-ic?))
     request-keep-alive?(request) := #f
   elseif (member?("keep-alive", conn-values, test: string-equal-ic?))
-    request-keep-alive?(request) := #t
+    request-keep-alive?(request) := #f
   end;
   let host/port = get-header(request, "Host", parsed: #t);
   let host = host/port & head(host/port);
