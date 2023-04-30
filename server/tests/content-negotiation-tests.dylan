@@ -3,7 +3,7 @@ Copyright: See LICENSE in this distribution for details.
 Synopsis: Tests for the content negotiation code
 
 
-define test test-media-type-from-header ()
+define http-test test-media-type-from-header ()
   let raw-header = ("text/*;q=0.3, text/html;q=0.7, text/html;level=1,"
                       "text/html;level=2;q=0.4, */*;q=0.5");
   let header = parse-header-value(#"accept", raw-header);
@@ -19,17 +19,17 @@ define test test-media-type-from-header ()
                 expected-quality,
                 media-type-from-header(header, mt1).media-type-quality);
   end;
-end test;
+end http-test;
 
-define test test-locators-matching ()
+define http-test test-locators-matching ()
   // TODO
-end test;
+end http-test;
 
-define test test-document-variant ()
+define http-test test-document-variant ()
   // TODO
-end test;
+end http-test;
 
-define test test-find-multi-view-file ()
+define http-test test-find-multi-view-file ()
   // We need a better temp directory/file generator library.
   // Also, it would be nice if testworks had a standard way of creating directories
   // for a given test so that an entire test run has temp data stored in a standard
@@ -108,4 +108,4 @@ define test test-find-multi-view-file ()
       //remove-directory(test-directory);
     end;
   end block;
-end test;
+end http-test;

@@ -21,8 +21,7 @@ define module http-protocol-test-suite
   use date;
   use http-client;
   use http-common;
-  use http-testing,
-    import: { fmt };
+  use http-testing;
   use sockets,
     import: { start-sockets };
   use ssl-sockets;              // for side-effect

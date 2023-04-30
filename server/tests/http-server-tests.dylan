@@ -2,7 +2,7 @@ Module: http-server-test-suite
 Copyright: See LICENSE in this distribution for details.
 
 
-define test start-stop-basic-test ()
+define http-test start-stop-basic-test ()
   let server = make-server();
   block ()
     check-equal("start-stop-basic-test check #1",
@@ -11,11 +11,11 @@ define test start-stop-basic-test ()
   cleanup
     stop-server(server);
   end;
-end test;
+end http-test;
 
 // Make sure there are no timing problems related to threads and
 // starting and stopping the server.
-define test repeated-start-stop-test ()
+define http-test repeated-start-stop-test ()
   for (i from 1 to 5)
     let server = make-server();
     block ()
@@ -26,11 +26,11 @@ define test repeated-start-stop-test ()
       stop-server(server);
     end;
   end;
-end test;
+end http-test;
 
 // The same as repeated-start-stop-test, but make a connection to the
 // listener each time the server is started.
-define test test-repeated-start-stop-with-connection ()
+define http-test test-repeated-start-stop-with-connection ()
   for (i from 1 to 5)
     let server = make-server(debug: #t);
     add-resource(server, "/", function-resource(method ()
@@ -45,11 +45,11 @@ define test test-repeated-start-stop-with-connection ()
       stop-server(server);
     end;
   end;
-end test;
+end http-test;
 
 // This is expected to fail on non-Windows platforms, which signal
 // <unix-socket-error> for almost everything as of 2014.
-define test conflicting-listener-ips-test ()
+define http-test conflicting-listener-ips-test ()
   let server = make-server(listeners: list($listener-127, $listener-127));
   block ()
     check-condition("start-server with conflicting listener-ips",
@@ -58,12 +58,12 @@ define test conflicting-listener-ips-test ()
   cleanup
     stop-server(server);
   end;
-end test;
+end http-test;
 
 // Test that the server can handle the "Transfer-encoding: chunked" header
 // by setting the outgoing-chunk-size of the client's connection.
 //
-define test chunked-request-test ()
+define http-test chunked-request-test ()
   // Client requests are chunked if we don't add a Content-Length header.
   with-http-server (server = make-server())
     add-resource(server, "/echo", make(<echo-resource>));
@@ -80,10 +80,10 @@ define test chunked-request-test ()
         end for;
       end;
     exception (ex :: <http-error>)
-      log-debug($log, "Error: %s", ex);
+      log-debug("Error: %s", ex);
     end;
   end;
-end test;
+end http-test;
 
 begin
   start-sockets();

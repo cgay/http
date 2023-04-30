@@ -2,10 +2,6 @@ Module: http-testing
 Copyright: See LICENSE in this distribution for details.
 
 
-define constant $log :: <log> = make(<log>, name: "http.test-suite");
-
-// Would this be useful in http-server itself?
-//
 define macro with-http-server
   { with-http-server (?server:variable = ?ctor:expression) ?body:body end }
   => { let _server = #f;
@@ -22,10 +18,43 @@ define macro with-http-server
      }
 end macro with-http-server;
 
+define function make-test-log () => (log :: <log>)
+  let dir = test-temp-directory();
+  make(<log>,
+       // Testworks doesn't provide a better way to get the current test name.
+       name: locator-name(dir),
+       level: $debug-level,
+       targets: list(make(<file-log-target>,
+                          pathname: file-locator(dir, "test.log"))))
+end function;
+
+// Redirect logging during a given test to the test's output directory.
+define macro with-logging-redirected
+  { with-logging-redirected () ?:body end
+  } => {
+    dynamic-bind (*log* = make-test-log())
+      ?body
+    end
+  }
+end macro;
+
+// Instead of adding with-logging-redirected around each test body and the
+// concomitant indentation.
+define macro http-test-definer
+  { define http-test ?test-name:name (?keyword-args:*) ?test-body:body end
+  } => {
+    define test ?test-name (?keyword-args)
+      with-logging-redirected ()
+        ?test-body
+      end;
+    end test
+  }
+end macro;
+
 define constant fmt = format-to-string;
 
 define variable *test-host* :: <string> = "127.0.0.1";
-define variable *test-port* :: <integer> = 8080;
+define variable *test-port* :: <integer> = 7533;
 
 define method test-url
     (path-etc :: <string>, #key host, port) => (url :: <url>)
@@ -50,7 +79,6 @@ define function make-server
   let server = apply(make, <http-server>,
                      listeners: listeners | list($listener-any),
                      keys);
-  log-level(*log*) := $debug-level;
   server
 end function make-server;
 

@@ -5,7 +5,7 @@ Synopsis: Tests for <resource>s and URL routing.
 
 //// add-resource suite
 
-define test test-add-resource-basics ()
+define http-test test-add-resource-basics ()
   local method add-and-find (to-add, to-find)
           let top = make(<resource>);
           let bot = make(<resource>);
@@ -40,10 +40,10 @@ define test test-add-resource-basics ()
   add-and-find("/foo", "/foo");
   add-and-find("/foo/bar/", "/foo/bar/");
 
-end test;
+end http-test;
 
 // More specific descendant takes precedence?
-define test test-add-resource-precedence ()
+define http-test test-add-resource-precedence ()
   let root = make(<resource>);
   let shallow = make(<resource>);
   let deep = make(<resource>);
@@ -52,11 +52,11 @@ define test test-add-resource-precedence ()
   check-equal("Deeper resource takes precedence?",
               deep,
               find-resource(root, "/foo/bar"));
-end test;
+end http-test;
 
 // add-resource sets parent to first child added?
 // Also check that generated url path is correct, since it's related.
-define test test-add-resource-parent ()
+define http-test test-add-resource-parent ()
   let root = make(<resource>);
   let child = make(<resource>);
   add-resource(root, "foo", child);
@@ -73,10 +73,10 @@ define test test-add-resource-parent ()
   check-equal("generated url path unchanged after second child added?",
               "foo",
               child.resource-url-path);
-end test;
+end http-test;
 
 // add-resource sets path variables correctly?
-define test test-add-resource-path-variables ()
+define http-test test-add-resource-path-variables ()
   let root = make(<resource>);
   let child = make(<resource>);
   add-resource(root, "/a/b/c/{x}/{y}/{z}", child);
@@ -94,12 +94,12 @@ define test test-add-resource-path-variables ()
   check-condition("trailing slash after path variables signals error?",
                   <http-server-api-error>,
                   add-resource(root, "b/{x}/{y}/", child));
-end test;
+end http-test;
 
 
 //// One-off tests, directly in add-resource-test-suite
 
-define test test-find-resource ()
+define http-test test-find-resource ()
   local method find-and-verify
             (root, url, expected-resource, expected-pre-path, expected-post-path)
           let (rsrc :: <resource>, pre-path :: <list>, post-path :: <list>)
@@ -125,13 +125,13 @@ define test test-find-resource ()
   find-and-verify(root, parse-url("http://host/aaa/xxx"), aaa, #("", "aaa"), #("xxx"));
   find-and-verify(root, parse-url("http://host/bbb"),     bbb, #("", "bbb"), #());
   find-and-verify(root, parse-url("http://host/bbb/ccc"), ccc, #("", "bbb", "ccc"), #());
-end test;
+end http-test;
 
 
 
 //// Path variable suite
 
-define test test-parse-path-variable ()
+define http-test test-parse-path-variable ()
   check-condition("no path variable",
                   <http-server-api-error>,
                   parse-path-variable("x"));
@@ -146,23 +146,26 @@ define test test-parse-path-variable ()
     check-equal(fmt("%s name", text), name, pvar.path-variable-name);
     check-equal(fmt("%s required?", text), required?, pvar.path-variable-required?);
   end;
-end test;
+end http-test;
 
 
 // Verify that a leaf mapping (one that doesn't expect any URL suffix) gives
 // 404 error if suffix is non-empty.
 //
-define test test-path-variable-binding ()
+define http-test test-path-variable-binding ()
   let bindings = #f;
-  local method set-bindings (#rest args, #key)
-          bindings := args;
-        end;
+  let resource
+    = function-resource(method (#rest args, #key)
+                          bindings := args;
+                        end);
 
+  // TODO(cgay): this test shouldn't require an actual server to be started;
+  // just a router.
   with-http-server (server = make-server())
-    add-resource(server, "/a/b",      function-resource(set-bindings));
-    add-resource(server, "/x/y/{z*}", function-resource(set-bindings));
-    add-resource(server, "/m/n/{o+}", function-resource(set-bindings));
-    add-resource(server, "/r/s/{t}/{u?}", function-resource(set-bindings));
+    add-resource(server, "/a/b",          resource);
+    add-resource(server, "/x/y/{z*}",     resource);
+    add-resource(server, "/m/n/{o+}",     resource);
+    add-resource(server, "/r/s/{t}/{u?}", resource);
 
     for (item in list(#("/a/b",     #[]),
                       #("/a/b/c",   404),
@@ -179,6 +182,7 @@ define test test-path-variable-binding ()
                       #("/r/s/t",     #[#"t", "t", #"u", #f]),
                       #("/r/s/t/u",   #[#"t", "t", #"u", "u"]),
                       #("/r/s/t/u/v", 404)))
+      bindings := #f;
       let url = item[0];
       let expected = item[1];
       if (expected = 404)
@@ -195,4 +199,4 @@ define test test-path-variable-binding ()
       end;
     end for;
   end with-http-server;
-end test;
+end http-test;

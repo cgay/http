@@ -2,7 +2,7 @@ Module: http-common-test-suite
 Copyright: See LICENSE in this distribution for details.
 
 
-define test test-quality-value ()
+define http-test test-quality-value ()
   for (pair in #[#["0.2", 0.2],
                  #["0.02", 0.02],
                  #["0.002", 0.002],
@@ -14,16 +14,16 @@ define test test-quality-value ()
                 expected,
                 quality-value(string, 0, string.size));
   end;
-end test;
+end http-test;
 
 // See also: test-parse-media-type
-define test test-accept-header ()
+define http-test test-accept-header ()
   let raw-header = "audio/*; q=0.5; r=\"2\", audio/mp3; q=1.0";
   check-equal(format-to-string("parse accept header %=", raw-header),
               list(make-media-type("audio", "*", #["q", 0.5], #["r", "2"]),
                    make-media-type("audio", "mp3", #["q", 1.0])),
               parse-header-value(#"accept", raw-header));
-end test;
+end http-test;
 
 define function make-media-type
     (type :: <byte-string>, subtype :: <byte-string>, #rest attributes)
@@ -49,7 +49,7 @@ define constant text/plain = make-media-type("text", "plain");
 // Note that tests for parsing Accept* headers will cover the case where
 // there are multiple media types in a comma-separated string.
 //
-define test test-parse-media-type ()
+define http-test test-parse-media-type ()
   check-condition("media type with no type signals error",
                   <http-parse-error>,
                   parse-media-type-helper("/*"));
@@ -90,9 +90,9 @@ define test test-parse-media-type ()
   check-equal("parse-media-type converts level to integer?",
               2,
               media-type-level(parse-media-type-helper("text/plain; q=0.3; level=2")));
-end test;
+end http-test;
 
-define test test-match-media-types ()
+define http-test test-match-media-types ()
   for (item in list(list("text", "plain"),
                     list("text", $mime-wild),
                     list($mime-wild, $mime-wild)))
@@ -116,42 +116,42 @@ define test test-match-media-types ()
     check-false(format-to-string("media-types-match?(text/plain, %s/%s) is false?", t, s),
                 match-media-types(text/plain, make-media-type(t, s)));
   end;
-end test;
+end http-test;
 
-define test test-media-type-more-specific? ()
+define http-test test-media-type-more-specific? ()
   let text/html-level-1 = make-media-type("text", "html", #["level", 1]);
   let text/html = make-media-type("text", "html");
-  let text/* = make-media-type("text", $mime-wild);
-  let wild/* = make-media-type($mime-wild, $mime-wild);
+  let text/wild = make-media-type("text", $mime-wild);
+  let wild/wild = make-media-type($mime-wild, $mime-wild);
   check-equal("Precedence example in RFC 2616, 14.1 works?",
-              list(text/html-level-1, text/html, text/*, wild/*), // expected
-              sort(list(text/*, text/html, text/html-level-1, wild/*),
+              list(text/html-level-1, text/html, text/wild, wild/wild), // expected
+              sort(list(text/wild, text/html, text/html-level-1, wild/wild),
                    test: media-type-more-specific?));
-end test;
+end http-test;
 
-define test test-media-type-exact? ()
+define http-test test-media-type-exact? ()
   check-true("media-type-exact?(text/plain)", media-type-exact?(text/plain));
   check-false("media-type-exact?(text/*) is false?",
               media-type-exact?(make-media-type("text", $mime-wild)));
   check-false("media-type-exact?(*/*)",
               media-type-exact?(make-media-type($mime-wild, $mime-wild)));
-end test;
+end http-test;
 
-define test test-media-type-quality ()
+define http-test test-media-type-quality ()
   check-equal("'q' attribute defines media type quality value?",
               0.4,
               make-media-type("a", "b", #["q", 0.4]).media-type-quality);
   check-equal("Default quality value is 1.0?",
               1.0,
               make-media-type("a", "b").media-type-quality);
-end test;
+end http-test;
 
-define test test-media-type-level ()
+define http-test test-media-type-level ()
   check-equal("'level' attribute defines media type level?",
               2,
               make-media-type("a", "b", #["level", 2]).media-type-level);
   check-false("Default level is #f?", make-media-type("a", "b").media-type-level);
-end test;
+end http-test;
 
 begin
   start-sockets();

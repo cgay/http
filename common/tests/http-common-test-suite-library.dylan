@@ -5,6 +5,7 @@ Copyright: See LICENSE in this distribution for details.
 define library http-common-test-suite
   use common-dylan;
   use http-common;
+  use http-testing;
   use network;
   use ssl-network;
   use testworks;
@@ -16,6 +17,7 @@ define module http-common-test-suite
   use common-dylan;
   use http-common;
   use http-common-internals;
+  use http-testing;
   use sockets,
     import: { start-sockets };
   use ssl-sockets;              // for side-effect

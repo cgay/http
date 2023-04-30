@@ -8,6 +8,8 @@ define library http-testing
   use http-server;
   use logging;
   use network;
+  use system;
+  use testworks;
   use uri;
   use io, import: { format };
 
@@ -20,9 +22,14 @@ define module http-testing
   use http-client;
   use http-common;
   use http-server;
+  use locators,
+    import: { file-locator, locator-name };
   use logging;
   use sockets,
     import: { start-sockets };
+  use testworks;
+  use threads,
+    import: { dynamic-bind };
   use uri,
     import: { parse-url, <url> };
 
@@ -31,7 +38,6 @@ define module http-testing
     fmt,
     $listener-127,
     $listener-any,
-    $log,
     *test-host*,
     *test-port*,
     test-url,
@@ -39,5 +45,7 @@ define module http-testing
     make-listener,
     make-server,
     <x-resource>, make-x-url,
-    with-http-server;
+    \http-test-definer,
+    \with-http-server,
+    \with-logging-redirected;
 end module http-testing;

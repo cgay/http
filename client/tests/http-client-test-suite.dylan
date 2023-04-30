@@ -2,7 +2,7 @@ Module: http-client-test-suite
 Author: Francesco Ceccon
 Copyright: See LICENSE in this distribution for details.
 
-define test test-convert-headers-method ()
+define http-test test-convert-headers-method ()
   let headers = convert-headers(#f);
   check-instance?("#f is an empty <header-table>", <header-table>, headers);
 
@@ -12,7 +12,7 @@ define test test-convert-headers-method ()
   let h = tabling(<string-table>, "k1" => "v1", "k2" => "v2");
   headers := convert-headers(h);
   check-instance?("<header-table> from a <table>", <header-table>, headers);
-end test;
+end http-test;
 
 
 /*
@@ -46,7 +46,7 @@ end;
 // Test GETs with responses of various sizes.  For http-server, the largest
 // one causes a chunked response.
 //
-define test test-http-get-to-string ()
+define http-test test-http-get-to-string ()
   with-http-server (server = make-server(/* debug: #t */))
     register-test-resources(server);
     for (n in list(0, 1, 2, 8192 /*, 100000 */))
@@ -59,13 +59,13 @@ define test test-http-get-to-string ()
                   response.response-content);
     end;
   end;
-end test;
+end http-test;
 
 // Verify that getting a URL with no path component is the same
 // as getting the same URL with / as the path.  That is, http://host
 // is the same as http://host/.  This was bug 7462.
 //
-define test test-http-get-no-path ()
+define http-test test-http-get-no-path ()
   with-http-server (server = make-server(/* debug: #t */))
     register-test-resources(server);
     let no-path-url = test-url("");
@@ -75,9 +75,9 @@ define test test-http-get-no-path ()
                 response-content(http-get(root-url())),
                 response-content(http-get(no-path-url)));
   end;
-end test;
+end http-test;
 
-define test test-http-get-to-stream ()
+define http-test test-http-get-to-stream ()
   with-http-server (server = make-server(/* debug: #t */))
     register-test-resources(server);
     for (n-bytes in list(0, 1, 2, 8192 /*, 100000 */))
@@ -93,21 +93,21 @@ define test test-http-get-to-stream ()
       // read-to-end(response);  // cleanup
     end;
   end;
-end test;
+end http-test;
 
-define test test-encode-form-data ()
+define http-test test-encode-form-data ()
   // NYI
-end test;
+end http-test;
 
-define test test-http-connections ()
+define http-test test-http-connections ()
   // NYI
-end test;
+end http-test;
 
-define test test-with-http-connection ()
+define http-test test-with-http-connection ()
   // NYI
-end test;
+end http-test;
 
-define test test-reuse-http-connection ()
+define http-test test-reuse-http-connection ()
   with-http-server (server = make-server(/* debug: #t */))
     register-test-resources(server);
     // The explicit headers here should be temporary.  I want to make
@@ -131,9 +131,9 @@ define test test-reuse-http-connection ()
       // we need to flush/discard the extra data to make the connection 
       // usable again...presumably.
   end;
-end test;
+end http-test;
 
-define test test-streaming-request ()
+define http-test test-streaming-request ()
   with-http-server (server = make-server(/* debug: #t */))
     register-test-resources(server);
     with-http-connection(conn = root-url())
@@ -149,9 +149,9 @@ define test test-streaming-request ()
                   response-content(read-response(conn)));
     end;
   end;
-end test;
+end http-test;
 
-define test test-streaming-response ()
+define http-test test-streaming-response ()
   with-http-server (server = make-server(/* debug: #t */))
     register-test-resources(server);
     with-http-connection(conn = root-url())
@@ -163,9 +163,9 @@ define test test-streaming-response ()
                   data);
     end;
   end;
-end test;
+end http-test;
 
-define test test-write-chunked-request ()
+define http-test test-write-chunked-request ()
   with-http-server (server = make-server(/* debug: #t */))
     register-test-resources(server);
     // Client requests are chunked if we don't add a Content-Length header.
@@ -184,9 +184,9 @@ define test test-write-chunked-request ()
       end for;
     end;
   end;
-end test;
+end http-test;
 
-define test test-read-chunked-response ()
+define http-test test-read-chunked-response ()
   with-http-server (server = make-server(/* debug: #t */))
     register-test-resources(server);
     with-http-connection(conn = root-url())
@@ -207,37 +207,37 @@ define test test-read-chunked-response ()
       // actually chunked.  
     end;
   end;
-end test;
+end http-test;
 
-define test test-non-chunked-request ()
+define http-test test-non-chunked-request ()
   // NYI
-end test;
+end http-test;
 
-define test test-non-chunked-response ()
+define http-test test-non-chunked-response ()
   // NYI
-end test;
+end http-test;
 
-define test test-resource-not-found-error ()
+define http-test test-resource-not-found-error ()
   with-http-server (server = make-server(/* debug: #t */))
     check-condition("<resource-not-found-error> (404) signaled",
                     <resource-not-found-error>,
                     http-get(test-url("/no-such-url")));
   end;
-end test;
+end http-test;
 
-define test test-invalid-response-chunk-sizes ()
+define http-test test-invalid-response-chunk-sizes ()
   // NYI
-end test;
+end http-test;
 
-define test test-invalid-response-content-lengths ()
+define http-test test-invalid-response-content-lengths ()
   // NYI
-end test;
+end http-test;
 
-define test test-invalid-request-content-lengths ()
+define http-test test-invalid-request-content-lengths ()
   // NYI
-end test;
+end http-test;
 
-define test test-read-from-response-after-done ()
+define http-test test-read-from-response-after-done ()
   with-http-server (server = make-server(/* debug: #t */))
     register-test-resources(server);
     with-http-connection(conn = root-url())
@@ -248,14 +248,14 @@ define test test-read-from-response-after-done ()
                       read-element(response));
     end;
   end;
-end test;
+end http-test;
 
-define test test-follow-redirects ()
+define http-test test-follow-redirects ()
   // NYI
-end test;
+end http-test;
 
 // Test redirect loop detection. See RFC 2616 section 10.3.
-define test test-redirect-loop-detection ()
+define http-test test-redirect-loop-detection ()
   with-http-server (server = make-server(/* debug: #t */))
     let url = test-url("/loop");
     add-resource(server, "/loop", function-resource(curry(redirect-to, url)));
@@ -263,9 +263,9 @@ define test test-redirect-loop-detection ()
                    http-get(url, follow-redirects: #t),
                    "Infinite redirect loop signals <redirect-loop-detected>");
   end;
-end test;
+end http-test;
 
-define test test-https ()
+define http-test test-https ()
   // This puts a dependency on github.com and on the network being up while
   // this test suite is run, but the test infrastructure to set up an https
   // server side doesn't yet exist. TODO...
@@ -277,7 +277,7 @@ define test test-https ()
   assert-equal(302, res.response-code);
   assert-true(starts-with?(get-header(res, "Location"),
                            "https://github.com/dylan-lang/pacman-catalog/releases/tag/"));
-end;
+end http-test;
 
 begin
   start-sockets();

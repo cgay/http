@@ -2,7 +2,7 @@ Module: http-server-test-suite
 Copyright: See LICENSE in this distribution for details.
 
 
-define test test-vhost-add-resource ()
+define http-test test-vhost-add-resource ()
   let server = make-server(use-default-virtual-host?: #t);
   let root = make(<resource>);
   let vhost = make(<virtual-host>, router: root);
@@ -41,13 +41,13 @@ define test test-vhost-add-resource ()
     check-equal("find-resource(router, <request>) uses correct virtual host - #2",
                 2, value);
   end;
-end test;
+end http-test;
 
 /*
 // Verify that find-resource(vhost-router, request) finds the correct
 // resource based on the Host: header of the request.
 //
-define test test-vhost-find-resource ()
+define http-test test-vhost-find-resource ()
   let router = make(<virtual-host-router>, fall-back-to-default?: #f);
   let vhost-1 = make(<virtual-host-resource>);
   let vhost-2 = make(<virtual-host-resource>);

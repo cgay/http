@@ -29,7 +29,7 @@ define function configure
   server
 end function configure;
 
-define test basic-config-test ()
+define http-test basic-config-test ()
   let texts = #("",
                 "<barbaloot>",
                 "<http-server>gubbish</http-server>",
@@ -43,9 +43,9 @@ define test basic-config-test ()
                   configure(config-document("")));
   check-no-errors("Unknown element ignored",
                   configure(config-document("<unknown></unknown>")));
-end test;
+end http-test;
 
-define test listener-config-test ()
+define http-test listener-config-test ()
   let texts = #(// valid
                 "<listener address=\"123.45.67.89\" port=\"2222\" />",
                 "<listener address=\"123.45.67.89\" />",
@@ -58,9 +58,9 @@ define test listener-config-test ()
   for (text in texts)
     check-no-errors(text, configure(config-document(text)));
   end;
-end test;
+end http-test;
 
-define test alias-config-test ()
+define http-test alias-config-test ()
   let server = make-server();
   add-resource(server, "/abc", make(<echo-resource>));
   let text = "<alias url=\"/def\" target=\"/abc\"/>";
@@ -75,13 +75,13 @@ define test alias-config-test ()
                   "/abc", get-header(response, "Location"));
     end;
   end;
-end test;
+end http-test;
 
 
 // Verify that the <document-root> setting is respected, by setting it
 // to the directory containing application-filename() and then requesting
 // the executable file.
-define test test-directory-resource ()
+define http-test test-directory-resource ()
   let app = as(<file-locator>, application-filename());
   let dir = as(<string>, locator-directory(app));
   let text = fmt("<directory url=\"/\" location=\"%s\"/>\n", dir);
@@ -94,9 +94,9 @@ define test test-directory-resource ()
       check-no-errors("<directory> resource config", read-response(conn));
     end;
   end;
-end test;
+end http-test;
 
-define test test-directory-resource-default-documents ()
+define http-test test-directory-resource-default-documents ()
   let resource = make(<directory-resource>, directory: temp-directory());
   check-equal("Default default documents are index.html and index.htm",
               list(as(<file-locator>, "index.html"),
@@ -125,4 +125,4 @@ define test test-directory-resource-default-documents ()
               list(as(<file-locator>, "one"),
                    as(<file-locator>, "two")),
               resource.default-documents);
-end test;
+end http-test;

@@ -14,25 +14,25 @@ define method response-content-contains?
   find-substring(response.response-content, concatenate("\"", str, "\":")) ~= #f;
 end method response-content-contains?;
 
-define variable *test-host* :: <string> = "httpbin.org";
-define variable *test-port* :: <integer> = 80;
+define variable *httpbin-host* :: <string> = "httpbin.org";
+define variable *httpbin-port* :: <integer> = 80;
 
 define function full-url
     (#rest segments) => (full-url :: <url>)
-  parse-url(fmt("http://%s:%d%s", *test-host*, *test-port*, join(segments, "/")));
+  parse-url(fmt("http://%s:%d%s", *httpbin-host*, *httpbin-port*, join(segments, "/")));
 end function full-url;
 
 //---------------------------------------------------------------------
 
-define test test-options-method (tags: #("online"))
+define http-test test-options-method (tags: #("online"))
   let response = http-options(full-url("/"));
   assert-equal(200, response.response-code);
   assert-equal(#("GET", "HEAD", "OPTIONS"),
                sort(split(get-header(response, "Allow"), ", ")),
                "Allowed methods");
-end test;
+end http-test;
 
-define test test-get-method (tags: #("online"))
+define http-test test-get-method (tags: #("online"))
   let response = http-get(full-url("/"));
   check-equal("200 OK", response.response-code, 200);
 
@@ -48,9 +48,9 @@ define test test-get-method (tags: #("online"))
   response := http-get(full-url("/get"), headers: h);
   check-equal("200 OK", response.response-code, 200);
   check-true("Send headers", response-content-contains?(response, "X-Test-Header"));
-end test;
+end http-test;
 
-define test test-get-method-allow-redirect (tags: #("online"))
+define http-test test-get-method-allow-redirect (tags: #("online"))
   let response = http-get(full-url("/redirect", "1"));
   // By default follow redirects
   // NOTE: how many?
@@ -61,9 +61,9 @@ define test test-get-method-allow-redirect (tags: #("online"))
 
   response := http-get(full-url("/redirect", "3"), follow-redirects: 3);
   check-equal("follow-redirects: 3", response.response-code, 200);
-end test;
+end http-test;
 
-define test test-post-method (tags: #("online"))
+define http-test test-post-method (tags: #("online"))
   let response = http-post(full-url("/post"), content: "{\"key1\": \"value1\"}");
   check-true("Send data as is", response-content-contains?(response, "key1"));
 
@@ -75,37 +75,37 @@ define test test-post-method (tags: #("online"))
   check-true("Send data as form-encoded (value)",
              find-substring(response.response-content,
                             concatenate("\"key2\":", " \"", payload["key2"], "\"")));
-end test;
+end http-test;
 
-define test test-head-method (tags: #("online"))
+define http-test test-head-method (tags: #("online"))
   let response = http-head(full-url("/"));
   check-equal("200 OK", response.response-code, 200);
-end test;
+end http-test;
 
-define test test-put-method (tags: #("online"))
+define http-test test-put-method (tags: #("online"))
   let payload = make(<string-table>, size: 2);
   payload["key1"] := "value1";
   payload["key2"] := "value with space";
   let response = http-put(full-url("/put"), content: payload);
   check-true("Send data as form-encoded (key)", response-content-contains?(response, "key1"));
   check-equal("200 OK", response.response-code, 200);
-end test;
+end http-test;
 
-define test test-delete-method (tags: #("online"))
+define http-test test-delete-method (tags: #("online"))
   let response = http-delete(full-url("/delete"));
   check-equal("200 OK", response.response-code, 200);
-end test;
+end http-test;
 
-define test test-trace-method ()
+define http-test test-trace-method ()
   // Not implemented by httpbin
-end test;
+end http-test;
 
-define test test-connect-method ()
+define http-test test-connect-method ()
   // Not implemented by httpbin
-end test;
+end http-test;
 
 
-define test test-date-header-parsing ()
+define http-test test-date-header-parsing ()
   // RFC 2616 - 3.3.1
   // HTTP/1.1 clients and servers that parse the date value MUST accept
   // all three formats (for compatibility with HTTP/1.0), though they MUST
@@ -123,18 +123,18 @@ define test test-date-header-parsing ()
                 date,
                 parse-http-date(test-date, 0, test-date.size));
   end;
-end test;
+end http-test;
 
 
-define test test-cookies ()
-end test;
+define http-test test-cookies ()
+end http-test;
 
-define test test-cookies-on-301 ()
-end test;
+define http-test test-cookies-on-301 ()
+end http-test;
 
-define test test-cookies-on-redirect ()
+define http-test test-cookies-on-redirect ()
   // This test requires a class to persist status between requests (session?)
-end test;
+end http-test;
 
 begin
   start-sockets();

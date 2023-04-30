@@ -2,7 +2,7 @@ Module: http-common-test-suite
 
 // Verify that the CRLF following the last header line is consumed, i.e., that
 // epos includes it.
-define test test-read-headers! ()
+define http-test test-read-headers! ()
   let text = "Content-Disposition: form-data; name=\"main-code\"\r\n\r\ndef";
   let buffer = make-header-buffer();
   let headers = make(<header-table>);
@@ -16,9 +16,9 @@ define test test-read-headers! ()
     assert-equal(1, headers.size);
     assert-equal("def", read-to-end(stream));
   end;
-end test;
+end http-test;
 
-define test test-read-headers!-valid ()
+define http-test test-read-headers!-valid ()
   let items
     = list(list("x: y\r\n\r\n", #("x", "y")),
            list("x: y\r\nz: a\r\n\r\n", #("x", "y", "z", "a")),
@@ -44,9 +44,9 @@ define test test-read-headers!-valid ()
       assert-equal(value, headers[name], description);
     end;
   end for;
-end test;
+end http-test;
 
-define test test-read-headers!-invalid ()
+define http-test test-read-headers!-invalid ()
   let error-cases = list("x:y\r\n",   // no LWS
                          "x: y",      // no CRLF
                          "x y\r\n");  // no colon
@@ -59,4 +59,4 @@ define test test-read-headers!-invalid ()
                    end,
                    format-to-string("message: %=", message));
   end;
-end test;
+end http-test;

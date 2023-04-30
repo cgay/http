@@ -1,7 +1,7 @@
 Module: http-server-test-suite
 Synopsis: Tests for request.dylan
 
-define test test-parse-request-line-values ()
+define http-test test-parse-request-line-values ()
   let items = list(
     // request method tests
     list("CONNECT url HTTP/1.1", $http-CONNECT-method, "url", "HTTP/1.1"),
@@ -50,4 +50,4 @@ define test test-parse-request-line-values ()
 
     end if;
   end for;
-end test;
+end http-test;
